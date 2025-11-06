@@ -1,0 +1,544 @@
+swagger: "2.0"
+info:
+  title: "Streamify - Video Streaming Platform API"
+  description: "Streamify is a complete video streaming platform built on a decoupled microservices architecture. It provides a robust backend system that handles everything from user authentication and video catalog management to pay-per-minute streaming, billing, and advanced analytics. The platform exposes a unified REST API through a central API Gateway, allowing client applications (web, mobile) to seamlessly interact with various backend capabilities including Auth Service, Video Service, Streaming Service, Billing Service, and Analytics Service."
+  version: "1.0.0"
+host: "api.example.com"
+basePath: "/"
+schemes:
+  - "https"
+  - "http"
+securityDefinitions:
+  Bearer:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - "Auth"
+      summary: "Create a new user account"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "User registration details"
+          required: true
+          schema:
+            $ref: "#/definitions/UserRegistration"
+      responses:
+        "201":
+          description: "User created successfully"
+  /api/auth/login:
+    post:
+      tags:
+        - "Auth"
+      summary: "Authenticate a user and return a JWT"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "User login credentials"
+          required: true
+          schema:
+            $ref: "#/definitions/UserLogin"
+      responses:
+        "200":
+          description: "Authentication successful"
+          schema:
+            $ref: "#/definitions/AuthToken"
+  /api/auth/verify:
+    post:
+      tags:
+        - "Auth"
+      summary: "Verify a JWT token (Internal)"
+      description: "Endpoint for other services to verify a token's validity."
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "Token is valid"
+          schema:
+            $ref: "#/definitions/UserProfile"
+        "401":
+          description: "Unauthorized"
+  /api/auth/profile:
+    get:
+      tags:
+        - "Auth"
+      summary: "Get the current user's profile"
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "User profile data"
+          schema:
+            $ref: "#/definitions/UserProfile"
+        "401":
+          description: "Unauthorized"
+    put:
+      tags:
+        - "Auth"
+      summary: "Update the current user's profile"
+      security:
+        - Bearer: []
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated user profile data"
+          required: true
+          schema:
+            $ref: "#/definitions/UserProfileUpdate"
+      responses:
+        "200":
+          description: "Profile updated successfully"
+        "401":
+          description: "Unauthorized"
+  /api/videos:
+    get:
+      tags:
+        - "Video"
+      summary: "List all videos with optional filters"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "category"
+          in: "query"
+          type: "string"
+        - name: "search"
+          in: "query"
+          type: "string"
+        - name: "page"
+          in: "query"
+          type: "integer"
+      responses:
+        "200":
+          description: "A paginated list of videos"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Video"
+    post:
+      tags:
+        - "Video"
+      summary: "Upload a new video"
+      security:
+        - Bearer: []
+      consumes:
+        - "multipart/form-data"
+      parameters:
+        - in: "formData"
+          name: "videoFile"
+          type: "file"
+          description: "The video file to upload."
+          required: true
+        - in: "formData"
+          name: "title"
+          type: "string"
+          required: true
+        - in: "formData"
+          name: "description"
+          type: "string"
+      responses:
+        "201":
+          description: "Video uploaded successfully"
+        "401":
+          description: "Unauthorized"
+  /api/videos/{id}:
+    get:
+      tags:
+        - "Video"
+      summary: "Get a single video's details"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Video details"
+          schema:
+            $ref: "#/definitions/Video"
+    put:
+      tags:
+        - "Video"
+      summary: "Update video metadata"
+      security:
+        - Bearer: []
+      consumes:
+        - "application/json"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/VideoUpdate"
+      responses:
+        "200":
+          description: "Video updated successfully"
+        "401":
+          description: "Unauthorized"
+    delete:
+      tags:
+        - "Video"
+      summary: "Delete a video"
+      security:
+        - Bearer: []
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+      responses:
+        "204":
+          description: "Video deleted successfully"
+        "401":
+          description: "Unauthorized"
+  /api/stream/start/{videoId}:
+    post:
+      tags:
+        - "Streaming"
+      summary: "Start a new streaming session"
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      parameters:
+        - name: "videoId"
+          in: "path"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Streaming session started"
+          schema:
+            $ref: "#/definitions/StreamSession"
+        "401":
+          description: "Unauthorized"
+        "402":
+          description: "Insufficient funds"
+  /api/stream/url/{sessionId}:
+    get:
+      tags:
+        - "Streaming"
+      summary: "Get the video stream URL with byte-range support"
+      description: "This endpoint serves the video content and supports HTTP Range requests."
+      parameters:
+        - name: "sessionId"
+          in: "path"
+          required: true
+          type: "string"
+        - name: "Range"
+          in: "header"
+          type: "string"
+          description: "The range of bytes to request (e.g., bytes=0-1023)"
+      responses:
+        "200":
+          description: "Full video content."
+        "206":
+          description: "Partial video content."
+          headers:
+            Content-Range:
+              type: "string"
+              description: "The range of bytes returned in the response."
+            Content-Length:
+              type: "integer"
+              description: "The size of the returned partial content."
+            Accept-Ranges:
+              type: "string"
+              description: "Indicates that the server accepts range requests for this resource."
+  /api/stream/heartbeat/{sessionId}:
+    put:
+      tags:
+        - "Streaming"
+      summary: "Update the watch progress"
+      security:
+        - Bearer: []
+      parameters:
+        - name: "sessionId"
+          in: "path"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Heartbeat successful"
+        "401":
+          description: "Unauthorized"
+  /api/billing/balance:
+    get:
+      tags:
+        - "Billing"
+      summary: "Get current user balance"
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "User balance"
+          schema:
+            $ref: "#/definitions/BillingAccount"
+        "401":
+          description: "Unauthorized"
+  /api/billing/deposit:
+    post:
+      tags:
+        - "Billing"
+      summary: "Mock deposit funds"
+      security:
+        - Bearer: []
+      consumes:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/DepositRequest"
+      responses:
+        "200":
+          description: "Deposit successful"
+        "401":
+          description: "Unauthorized"
+  /api/analytics/dashboard:
+    get:
+      tags:
+        - "Analytics"
+      summary: "Get platform-wide metrics"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "Dashboard analytics"
+          schema:
+            $ref: "#/definitions/DashboardStats"
+  /api/analytics/videos/{id}:
+    get:
+      tags:
+        - "Analytics"
+      summary: "Get analytics for a specific video"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Detailed analytics for the video"
+          schema:
+            $ref: "#/definitions/VideoAnalytics"
+  /api/analytics/user:
+    get:
+      tags:
+        - "Analytics"
+      summary: "Get activity for the current user"
+      security:
+        - Bearer: []
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "User activity report"
+          schema:
+            $ref: "#/definitions/UserActivity"
+        "401":
+          description: "Unauthorized"
+  /api/analytics/top-videos:
+    get:
+      tags:
+        - "Analytics"
+      summary: "Get the most popular videos"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "A list of top-performing videos"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/VideoAnalytics"
+  /api/analytics/revenue:
+    get:
+      tags:
+        - "Analytics"
+      summary: "Get revenue reports"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "Revenue trends and reports"
+          schema:
+            $ref: "#/definitions/RevenueReport"
+  /api/analytics/reports/{period}:
+    get:
+      tags:
+        - "Analytics"
+      summary: "Get aggregated reports by period"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "period"
+          in: "path"
+          required: true
+          type: "string"
+          enum: ["daily", "weekly", "monthly"]
+      responses:
+        "200":
+          description: "Aggregated report for the specified period"
+          schema:
+            $ref: "#/definitions/DashboardStats"
+definitions:
+  UserRegistration:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      password:
+        type: "string"
+      firstName:
+        type: "string"
+      lastName:
+        type: "string"
+  UserLogin:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      password:
+        type: "string"
+  AuthToken:
+    type: "object"
+    properties:
+      token:
+        type: "string"
+  UserProfile:
+    type: "object"
+    properties:
+      _id:
+        type: "string"
+      email:
+        type: "string"
+      firstName:
+        type: "string"
+      lastName:
+        type: "string"
+  UserProfileUpdate:
+    type: "object"
+    properties:
+      firstName:
+        type: "string"
+      lastName:
+        type: "string"
+  Video:
+    type: "object"
+    properties:
+      _id:
+        type: "string"
+      title:
+        type: "string"
+      description:
+        type: "string"
+      duration:
+        type: "integer"
+      pricePerMinute:
+        type: "integer"
+  VideoUpdate:
+    type: "object"
+    properties:
+      title:
+        type: "string"
+      description:
+        type: "string"
+  StreamSession:
+    type: "object"
+    properties:
+      sessionId:
+        type: "string"
+      streamUrl:
+        type: "string"
+      videoDetails:
+        $ref: "#/definitions/Video"
+  BillingAccount:
+    type: "object"
+    properties:
+      userId:
+        type: "string"
+      balance:
+        type: "integer"
+        description: "Balance in cents"
+  DepositRequest:
+    type: "object"
+    properties:
+      amount:
+        type: "integer"
+        description: "Amount to deposit in cents"
+  DashboardStats:
+    type: "object"
+    properties:
+      totalViews:
+        type: "integer"
+      totalUsers:
+        type: "integer"
+      totalRevenue:
+        type: "integer"
+      totalWatchTime:
+        type: "integer"
+  VideoAnalytics:
+    type: "object"
+    properties:
+      videoId:
+        type: "string"
+      totalViews:
+        type: "integer"
+      totalWatchTime:
+        type: "integer"
+      totalRevenue:
+        type: "integer"
+      completionRate:
+        type: "number"
+  UserActivity:
+    type: "object"
+    properties:
+      userId:
+        type: "string"
+      totalWatchTime:
+        type: "integer"
+      totalSpent:
+        type: "integer"
+      history:
+        type: "array"
+        items:
+          type: "object"
+  RevenueReport:
+    type: "object"
+    properties:
+      daily:
+        type: "integer"
+      weekly:
+        type: "integer"
+      monthly:
+        type: "integer"

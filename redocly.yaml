@@ -1,0 +1,13 @@
+apis:
+  video-streaming@v1:
+    root: v1.yaml
+
+extends:
+  - recommended
+
+rules:
+  no-unresolved-refs: error
+  no-unused-components: warn
+  operation-description: warn
+  operation-summary: error
+  tag-description: warn
