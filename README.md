@@ -32,6 +32,11 @@ This API-centric approach allows for:
 | **Billing Service** | Manages user virtual wallets, processes charges for video consumption, and maintains a transaction ledger. |
 | **Analytics Service**| Collects, aggregates, and reports on viewing data, user activity, and platform revenue. |
 
+### API Specification Screenshots
+<img width="1840" height="1105" alt="image" src="https://github.com/user-attachments/assets/8a64b67c-1101-43c0-af1f-76e9db754db9" />
+<img width="1840" height="1105" alt="image" src="https://github.com/user-attachments/assets/bb41862b-e19f-408c-be92-eb3d2c8747be" />
+<img width="1840" height="1105" alt="image" src="https://github.com/user-attachments/assets/8fd15410-bcf8-43a4-90c3-087aaca14425" />
+
 ---
 
 ## Team Details
