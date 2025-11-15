@@ -2,8 +2,10 @@
   "name": "APIBP-20242YA-Team-10",
   "version": "1.0.0",
   "description": "Video Streaming Platform API",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
     "docs:dev": "redocly preview",
     "docs:build": "redocly build-docs v1.yaml --output=docs/index.html",
     "docs:lint": "redocly lint v1.yaml",
@@ -12,10 +14,18 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["api", "swagger", "openapi", "video-streaming", "documentation"],
-  "author": "",
+  "author": "Team 10",
   "license": "ISC",
   "packageManager": "pnpm@10.20.0",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "multer": "^1.4.5-lts.1"
+  },
   "devDependencies": {
-    "@redocly/cli": "^2.11.0"
+    "@redocly/cli": "^2.11.0",
+    "nodemon": "^3.0.2"
   }
 }

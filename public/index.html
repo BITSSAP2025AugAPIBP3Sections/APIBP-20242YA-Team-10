@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streamify - Video Streaming Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .auth-section, .video-section, .analytics-section {
+            display: none;
+        }
+
+        .auth-section.active, .video-section.active, .analytics-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .navigation {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .video-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .video-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        #message {
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Streamify</h1>
+            <p>Complete Video Streaming Platform with Microservices Architecture</p>
+        </div>
+
+        <div class="user-info" id="userInfo" style="display: none;">
+            <div id="userDetails"></div>
+            <button class="btn secondary" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="navigation">
+            <button class="nav-btn active" onclick="showSection('auth')">Authentication</button>
+            <button class="nav-btn" onclick="showSection('video')">Videos</button>
+            <button class="nav-btn" onclick="showSection('analytics')">Analytics</button>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Authentication Section -->
+        <div class="auth-section active" id="authSection">
+            <div class="card">
+                <h2>👤 User Authentication</h2>
+                
+                <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                    <button class="btn" onclick="showAuthForm('register')">Register</button>
+                    <button class="btn secondary" onclick="showAuthForm('login')">Login</button>
+                </div>
+
+                <!-- Register Form -->
+                <div id="registerForm" style="display: none;">
+                    <h3>Create Account</h3>
+                    <div class="form-group">
+                        <label>First Name:</label>
+                        <input type="text" id="regFirstName" placeholder="Enter your first name">
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name:</label>
+                        <input type="text" id="regLastName" placeholder="Enter your last name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="regEmail" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="regPassword" placeholder="Enter your password">
+                    </div>
+                    <button class="btn" onclick="register()">Register</button>
+                </div>
+
+                <!-- Login Form -->
+                <div id="loginForm" style="display: none;">
+                    <h3>Login</h3>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="loginEmail" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password">
+                    </div>
+                    <button class="btn" onclick="login()">Login</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Section -->
+        <div class="video-section" id="videoSection">
+            <div class="card">
+                <h2>🎥 Video Management</h2>
+                
+                <div style="margin-bottom: 30px;">
+                    <button class="btn" onclick="loadVideos()">Load Videos</button>
+                    <button class="btn secondary" onclick="showUploadForm()">Upload Video</button>
+                    <button class="btn" onclick="checkBalance()">Check Balance</button>
+                    <button class="btn secondary" onclick="depositFunds()">Add Funds</button>
+                </div>
+
+                <!-- Upload Form -->
+                <div id="uploadForm" style="display: none; margin-bottom: 30px;">
+                    <h3>Upload New Video</h3>
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="videoTitle" placeholder="Enter video title">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <textarea id="videoDescription" placeholder="Enter video description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Category:</label>
+                        <select id="videoCategory">
+                            <option value="general">General</option>
+                            <option value="education">Education</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="technology">Technology</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Price per Minute (cents):</label>
+                        <input type="number" id="pricePerMinute" value="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Video File:</label>
+                        <input type="file" id="videoFile" accept="video/*">
+                    </div>
+                    <button class="btn" onclick="uploadVideo()">Upload</button>
+                    <button class="btn secondary" onclick="hideUploadForm()">Cancel</button>
+                </div>
+
+                <div id="videosContainer">
+                    <!-- Videos will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="analytics-section" id="analyticsSection">
+            <div class="card">
+                <h2>📊 Platform Analytics</h2>
+                <button class="btn" onclick="loadAnalytics()">Load Dashboard</button>
+                <button class="btn secondary" onclick="loadUserActivity()">My Activity</button>
+                
+                <div id="analyticsContainer">
+                    <!-- Analytics will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+
+        // Check if user is logged in on page load
+        if (authToken) {
+            verifyToken();
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.auth-section, .video-section, .analytics-section').forEach(s => {
+                s.classList.remove('active');
+            });
+            
+            // Remove active class from nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(section + 'Section').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showAuthForm(type) {
+            document.getElementById('registerForm').style.display = type === 'register' ? 'block' : 'none';
+            document.getElementById('loginForm').style.display = type === 'login' ? 'block' : 'none';
+        }
+
+        async function register() {
+            const data = {
+                firstName: document.getElementById('regFirstName').value,
+                lastName: document.getElementById('regLastName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Registration successful! Please login.', 'success');
+                    showAuthForm('login');
+                } else {
+                    showMessage(result.error || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function login() {
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    authToken = result.token;
+                    localStorage.setItem('authToken', authToken);
+                    await verifyToken();
+                    showMessage('Login successful!', 'success');
+                } else {
+                    showMessage(result.error || 'Login failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function verifyToken() {
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('userInfo').style.display = 'block';
+                    document.getElementById('userDetails').innerHTML = `
+                        <strong>Welcome, ${currentUser.firstName} ${currentUser.lastName}!</strong><br>
+                        <small>${currentUser.email}</small>
+                    `;
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                logout();
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            document.getElementById('userInfo').style.display = 'none';
+            showMessage('Logged out successfully', 'success');
+        }
+
+        function showUploadForm() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+            document.getElementById('uploadForm').style.display = 'block';
+        }
+
+        function hideUploadForm() {
+            document.getElementById('uploadForm').style.display = 'none';
+        }
+
+        async function uploadVideo() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('videoTitle').value);
+            formData.append('description', document.getElementById('videoDescription').value);
+            formData.append('category', document.getElementById('videoCategory').value);
+            formData.append('pricePerMinute', document.getElementById('pricePerMinute').value);
+            formData.append('videoFile', document.getElementById('videoFile').files[0]);
+
+            try {
+                const response = await fetch('/api/videos', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Video uploaded successfully!', 'success');
+                    hideUploadForm();
+                    loadVideos();
+                } else {
+                    showMessage(result.error || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function loadVideos() {
+            try {
+                const response = await fetch('/api/videos');
+                const videos = await response.json();
+                
+                const container = document.getElementById('videosContainer');
+                if (videos.length === 0) {
+                    container.innerHTML = '<p>No videos found. Upload some videos to get started!</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <h3>Available Videos</h3>
+                    <div class="video-grid">
+                        ${videos.map(video => `
+                            <div class="video-card">
+                                <h4>${video.title}</h4>
+                                <p><strong>Description:</strong> ${video.description || 'No description'}</p>
+                                <p><strong>Duration:</strong> ${Math.floor(video.duration / 60)}:${(video.duration % 60).toString().padStart(2, '0')}</p>
+                                <p><strong>Price:</strong> ${video.pricePerMinute}¢/min</p>
+                                <p><strong>Category:</strong> ${video.category}</p>
+                                ${authToken ? `<button class="btn" onclick="startStream('${video._id}')">Watch</button>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                showMessage('Failed to load videos', 'error');
+            }
+        }
+
+        async function startStream(videoId) {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stream/start/${videoId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`Stream started! Session ID: ${result.sessionId}`, 'success');
+                    // In a real app, you would redirect to a video player
+                    window.open(result.streamUrl, '_blank');
+                } else {
+                    showMessage(result.error || 'Failed to start stream', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function checkBalance() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/billing/balance', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`Your balance: ${result.balance}¢ (${(result.balance / 100).toFixed(2)} USD)`, 'success');
+                } else {
+                    showMessage(result.error || 'Failed to get balance', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function depositFunds() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            const amount = prompt('Enter amount to deposit in cents (e.g., 1000 for $10):');
+            if (!amount || isNaN(amount) || parseInt(amount) <= 0) {
+                showMessage('Invalid amount', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/billing/deposit', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount: parseInt(amount) })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage(`Deposit successful! New balance: ${result.newBalance}¢`, 'success');
+                } else {
+                    showMessage(result.error || 'Deposit failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/api/analytics/dashboard');
+                const analytics = await response.json();
+                
+                document.getElementById('analyticsContainer').innerHTML = `
+                    <div class="analytics-grid">
+                        <div class="stat-card">
+                            <h3>${analytics.totalUsers}</h3>
+                            <p>Total Users</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${analytics.totalViews}</h3>
+                            <p>Total Views</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${(analytics.totalRevenue / 100).toFixed(2)}</h3>
+                            <p>Revenue (USD)</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${Math.floor(analytics.totalWatchTime / 60)}</h3>
+                            <p>Watch Time (min)</p>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                showMessage('Failed to load analytics', 'error');
+            }
+        }
+
+        async function loadUserActivity() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/analytics/user', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const activity = await response.json();
+                
+                document.getElementById('analyticsContainer').innerHTML = `
+                    <h3>Your Activity</h3>
+                    <div class="analytics-grid">
+                        <div class="stat-card">
+                            <h3>${Math.floor(activity.totalWatchTime / 60)}</h3>
+                            <p>Total Watch Time (min)</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${(activity.totalSpent / 100).toFixed(2)}</h3>
+                            <p>Total Spent (USD)</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${activity.history.length}</h3>
+                            <p>Viewing Sessions</p>
+                        </div>
+                    </div>
+                    
+                    <h4>Recent Sessions:</h4>
+                    <div class="video-grid">
+                        ${activity.history.map(session => `
+                            <div class="video-card">
+                                <p><strong>Session:</strong> ${session.sessionId}</p>
+                                <p><strong>Video ID:</strong> ${session.videoId}</p>
+                                <p><strong>Watch Time:</strong> ${Math.floor(session.watchedTime / 60)}:${(session.watchedTime % 60).toString().padStart(2, '0')}</p>
+                                <p><strong>Started:</strong> ${new Date(session.startTime).toLocaleString()}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                showMessage('Failed to load user activity', 'error');
+            }
+        }
+
+        // Load videos on page load
+        loadVideos();
+    </script>
+</body>
+</html>
