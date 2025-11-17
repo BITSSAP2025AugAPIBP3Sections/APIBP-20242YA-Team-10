@@ -74,12 +74,22 @@ This API-centric approach allows for:
 
 ```
 APIBP-20242YA-Team-10/
-├── server.js              # Main server implementation
+├── server.js              # Main server implementation with all microservices
 ├── package.json           # Dependencies and scripts
 ├── v1.yaml               # OpenAPI specification
 ├── redocly.yaml          # API documentation config
-├── public/
-│   └── index.html        # Frontend web interface
+├── public/               # Frontend web application
+│   ├── index.html        # Auto-redirect entry point
+│   ├── login.html        # Authentication page (Auth Service)
+│   ├── dashboard.html    # Main dashboard with service overview
+│   ├── videos.html       # Video management page (Video Service)
+│   ├── streaming.html    # Video streaming page (Streaming Service)
+│   ├── billing.html      # Billing & balance page (Billing Service)
+│   ├── analytics.html    # Analytics & reports page (Analytics Service)
+│   ├── profile.html      # User profile page (Auth Service)
+│   ├── styles.css        # Shared styles for all pages
+│   ├── auth.js          # Authentication handling utilities
+│   └── utils.js         # Shared JavaScript utilities
 ├── test-api.js           # API testing script
 ├── uploads/              # Video file storage (created automatically)
 └── README.md             # This file
@@ -142,8 +152,22 @@ npm run docs:serve
 ### Using the Web Interface
 1. Start the server: `npm start`
 2. Open browser: http://localhost:3000
-3. Register a new account or login
-4. Upload videos, manage billing, view analytics
+3. You'll be automatically redirected to the login page
+4. **Register a new account** or login with existing credentials
+5. Explore all microservices through separate dedicated pages:
+   - **Dashboard** - Overview of all services and quick stats
+   - **Videos** - Browse, upload, edit, and delete videos
+   - **Streaming** - Watch videos with pay-per-minute billing
+   - **Billing** - Manage your account balance and deposits
+   - **Analytics** - View platform-wide and personal statistics
+   - **Profile** - Manage your account information
+
+### Key Features:
+- **Authentication Required**: You must login to access protected services
+- **Automatic Redirects**: Unauthorized access redirects to login page
+- **Real-time Updates**: Balance and statistics update in real-time
+- **Error Handling**: Comprehensive error messages guide you through any issues
+- **Session Management**: Secure JWT-based authentication with localStorage
 
 ### Using the Test Script
 ```bash
@@ -169,35 +193,64 @@ curl -X POST http://localhost:3000/api/auth/login \
 
 ## 📊 Features Demonstrated
 
+###  Authentication & Authorization
+- **Separate Auth Pages**: Dedicated login/register page with form validation
+- **Profile Management**: Edit user details on profile page
+- **Session Security**: JWT tokens with automatic refresh
+- **Protected Routes**: Unauthorized access redirects to login
+- **Logout Functionality**: Clear session and return to login
+
 ###  User Management
 - Complete user registration and authentication system
 - JWT-based security with token verification
-- Profile management capabilities
+- Profile management capabilities with update functionality
 
-###  Video Management
-- File upload system with metadata
-- Video categorization and search
-- CRUD operations for video content
+###  Video Management (Dedicated Page)
+- **Separate Videos Page**: Full video management interface
+- File upload with preview and metadata
+- Video categorization and filtering
+- Search functionality across video catalog
+- Complete CRUD operations (Create, Read, Update, Delete)
+- Authentication required for upload/edit/delete operations
 
-###  Streaming System
+###  Streaming System (Dedicated Page)
+- **Separate Streaming Page**: Full video player interface
 - Session-based streaming with security
+- Play/pause controls with real-time timer
+- Cost calculation displayed during playback
 - Byte-range request support for efficient streaming
-- Watch time tracking and billing integration
+- Watch time tracking and automatic billing integration
+- Heartbeat mechanism for session management
+- Insufficient funds detection with redirect to billing
 
-###  Billing System
-- Virtual wallet management
+###  Billing System (Dedicated Page)
+- **Separate Billing Page**: Complete balance management interface
+- Virtual wallet with real-time balance display
+- Quick deposit buttons ($5, $10, $20, $50)
+- Custom deposit amount input
 - Pay-per-minute billing model
 - Transaction tracking and balance management
+- Pricing information and examples
+- Automatic balance updates during streaming
 
-###  Analytics & Reporting
-- Real-time platform metrics
-- User activity tracking
-- Revenue reporting and insights
+###  Analytics & Reporting (Dedicated Page)
+- **Separate Analytics Page**: Comprehensive analytics dashboard
+- Platform-wide metrics (users, views, revenue, watch time)
+- Personal activity reports with session history
+- Top performing videos analysis
+- Revenue reports (daily, weekly, monthly)
+- Period-based reports with filtering
+- Real-time data visualization
+- User activity tracking with detailed history
 
 ###  Security Features
 - Password hashing with bcrypt
-- JWT token authentication
-- Authorization checks for protected endpoints
+- JWT token authentication with automatic validation
+- Authorization checks for all protected endpoints
+- Automatic redirect to login on 401/403 errors
+- Token expiration handling
+- Secure session management with localStorage
+- CORS configuration for API security
 
 ##  Deployment Ready
 
@@ -230,6 +283,109 @@ The application is production-ready with:
 
 ISC License - See LICENSE file for details.
 
+## 🎨 Frontend Architecture
+
+### Page-by-Page Breakdown
+
+#### 1. **index.html** - Entry Point
+- Auto-detects if user is logged in
+- Redirects to dashboard if authenticated
+- Redirects to login if not authenticated
+
+#### 2. **login.html** - Authentication Service UI
+- User registration with validation
+- Login with error handling
+- JWT token management
+- Redirects to dashboard on success
+
+#### 3. **dashboard.html** - Main Hub
+- Overview of all microservices
+- Quick statistics display
+- Service navigation cards
+- Recent activity feed
+- Links to all other pages
+
+#### 4. **videos.html** - Video Service UI
+- Browse video catalog with grid layout
+- Upload videos with metadata (auth required)
+- Edit video information (auth required)
+- Delete videos (auth required)
+- Search and filter by category
+- Video card previews
+
+#### 5. **streaming.html** - Streaming Service UI
+- Video player interface
+- Play/pause controls
+- Real-time cost tracking
+- Session management
+- Browse videos to stream
+- Insufficient funds handling
+
+#### 6. **billing.html** - Billing Service UI
+- Current balance display
+- Quick deposit options
+- Custom deposit form
+- Pricing information
+- Transaction history
+- Balance refresh
+
+#### 7. **analytics.html** - Analytics Service UI
+- Platform dashboard metrics
+- Personal activity reports
+- Top videos analytics
+- Revenue reports
+- Period-based reports (daily/weekly/monthly)
+- Data visualization
+
+#### 8. **profile.html** - User Profile UI (Auth Service)
+- View user information
+- Edit profile details
+- Account statistics
+- Integrated data from multiple services
+
+### Shared Components
+
+#### **styles.css** - Unified Design System
+- Consistent color scheme and branding
+- Responsive grid layouts
+- Card-based design patterns
+- Modal dialogs
+- Form styling
+- Button variants
+- Loading states
+- Message notifications (success, error, warning, info)
+
+#### **auth.js** - Authentication Utilities
+- Login/logout functions
+- Token management
+- Session validation
+- Automatic redirects
+
+#### **utils.js** - Shared JavaScript Functions
+- API request wrapper with error handling
+- Date/time formatting
+- Currency formatting
+- Duration formatting
+- Loading state management
+- Message notifications
+- Navigation updates
+
+### Error Handling & User Experience
+
+ **Comprehensive Error Messages**: All API errors display user-friendly messages
+ **Automatic Redirects**: Unauthorized access redirects to login automatically
+ **Loading States**: Visual feedback during API calls
+ **Form Validation**: Client-side validation before API calls
+ **Success Notifications**: Confirmation messages for successful operations
+ **Network Error Handling**: Graceful handling of connection issues
+ **Insufficient Funds Detection**: Automatic redirect to billing with prompt
+
 ---
 
-** The Streamify platform is fully functional and ready to use! Start the server and explore all features through the web interface at http://localhost:3000**
+** The Streamify platform is fully functional and ready to use!**
+
+**Start the server and explore all microservices through dedicated web pages:**
+1. Run `npm start`
+2. Open http://localhost:3000
+3. Register/Login to access all services
+4. Each microservice has its own dedicated, fully-functional webpage!
