@@ -5,28 +5,41 @@
 ##  Quick Start
 
 ### Prerequisites
-- Node.js (v14 or higher)
-- npm or pnpm
+- Docker and Docker Compose installed
+- At least 4GB RAM available
+- Ports 3000-3005 available
 
-### Installation & Setup
+### Installation & Setup (Docker - Recommended)
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd APIBP-20242YA-Team-10
 
-# Install dependencies
-npm install
+# Start all microservices with Docker
+docker-compose up --build -d
 
-# Start the server
-npm start
+# Application will be running at http://localhost:3000
+```
 
-# Server will be running at http://localhost:3000
+### Alternative: Local Development Setup
+```bash
+# Install dependencies for each service
+cd services/auth-service && npm install
+cd ../video-service && npm install
+cd ../streaming-service && npm install
+cd ../billing-service && npm install
+cd ../analytics-service && npm install
+cd ../api-gateway && npm install
+
+# Start each service individually (requires PostgreSQL databases)
+# See MICROSERVICES.md for detailed instructions
 ```
 
 ### Access the Application
 - **Web Interface**: http://localhost:3000
-- **API Documentation**: http://localhost:3000/health
+- **API Gateway Health**: http://localhost:3000/health
 - **API Base URL**: http://localhost:3000/api
+- **Individual Services**: Ports 3001-3005 (see Architecture section)
 
 ##  Project Overview
 
@@ -62,48 +75,100 @@ This API-centric approach allows for:
 
 ##  Technology Stack
 
+- **Architecture**: Microservices with API Gateway
 - **Backend**: Node.js with Express.js
+- **Database**: PostgreSQL (separate database per service)
 - **Authentication**: JWT (JSON Web Tokens)
 - **File Upload**: Multer for video file handling
 - **Security**: bcryptjs for password hashing
 - **Frontend**: Vanilla HTML/CSS/JavaScript
-- **Storage**: In-memory (easily replaceable with database)
+- **Containerization**: Docker & Docker Compose
+- **API Gateway**: http-proxy-middleware with rate limiting
 - **API Documentation**: OpenAPI/Swagger specification
 
 ##  Project Structure
 
 ```
 APIBP-20242YA-Team-10/
-├── server.js              # Main server implementation with all microservices
-├── package.json           # Dependencies and scripts
-├── v1.yaml               # OpenAPI specification
-├── redocly.yaml          # API documentation config
-├── public/               # Frontend web application
-│   ├── index.html        # Auto-redirect entry point
-│   ├── login.html        # Authentication page (Auth Service)
-│   ├── dashboard.html    # Main dashboard with service overview
-│   ├── videos.html       # Video management page (Video Service)
-│   ├── streaming.html    # Video streaming page (Streaming Service)
-│   ├── billing.html      # Billing & balance page (Billing Service)
-│   ├── analytics.html    # Analytics & reports page (Analytics Service)
-│   ├── profile.html      # User profile page (Auth Service)
-│   ├── styles.css        # Shared styles for all pages
-│   ├── auth.js          # Authentication handling utilities
-│   └── utils.js         # Shared JavaScript utilities
-├── test-api.js           # API testing script
-├── uploads/              # Video file storage (created automatically)
-└── README.md             # This file
+├── docker-compose.yml         # Docker orchestration for all services
+├── MICROSERVICES.md          # Comprehensive microservices documentation
+├── ARCHITECTURE_DIAGRAMS.md  # System Context, Container & Deployment diagrams
+├── QUICKSTART.md             # 5-minute setup guide
+├── v1.yaml                   # OpenAPI specification
+├── redocly.yaml              # API documentation config
+├── public/                   # Frontend web application
+│   ├── index.html            # Auto-redirect entry point
+│   ├── login.html            # Authentication page
+│   ├── dashboard.html        # Main dashboard
+│   ├── videos.html           # Video management page
+│   ├── streaming.html        # Video streaming page
+│   ├── billing.html          # Billing & balance page
+│   ├── analytics.html        # Analytics & reports page
+│   ├── profile.html          # User profile page
+│   ├── styles.css            # Shared styles
+│   ├── auth.js               # Authentication utilities
+│   └── utils.js              # Shared JavaScript utilities
+├── services/                 # Microservices directory
+│   ├── api-gateway/          # API Gateway (Port 3000)
+│   │   ├── index.js
+│   │   ├── package.json
+│   │   ├── Dockerfile
+│   │   └── .env.example
+│   ├── auth-service/         # Authentication Service (Port 3001)
+│   │   ├── index.js
+│   │   ├── db.js            # PostgreSQL connection & schema
+│   │   ├── package.json
+│   │   ├── Dockerfile
+│   │   └── .env.example
+│   ├── video-service/        # Video Management Service (Port 3002)
+│   │   ├── index.js
+│   │   ├── db.js
+│   │   ├── package.json
+│   │   ├── Dockerfile
+│   │   └── .env.example
+│   ├── streaming-service/    # Video Streaming Service (Port 3003)
+│   │   ├── index.js
+│   │   ├── db.js
+│   │   ├── package.json
+│   │   ├── Dockerfile
+│   │   └── .env.example
+│   ├── billing-service/      # Billing & Payments Service (Port 3004)
+│   │   ├── index.js
+│   │   ├── db.js
+│   │   ├── package.json
+│   │   ├── Dockerfile
+│   │   └── .env.example
+│   └── analytics-service/    # Analytics & Reporting Service (Port 3005)
+│       ├── index.js
+│       ├── db.js
+│       ├── package.json
+│       ├── Dockerfile
+│       └── .env.example
+└── server.js                 # Legacy monolithic server (deprecated)
 ```
 
 ##  Available Scripts
 
+### Docker Commands (Recommended)
 ```bash
-# Start the production server
-npm start
+# Start all services
+docker-compose up --build -d
 
-# Start development server with auto-reload
-npm run dev
+# View logs
+docker-compose logs -f
 
+# Stop all services
+docker-compose down
+
+# Stop and remove all data
+docker-compose down -v
+
+# Restart specific service
+docker-compose restart auth-service
+```
+
+### API Documentation
+```bash
 # Build API documentation
 npm run docs:build
 
@@ -252,24 +317,69 @@ curl -X POST http://localhost:3000/api/auth/login \
 - Secure session management with localStorage
 - CORS configuration for API security
 
+## 🏗️ Microservices Architecture
+
+### Overview
+Streamify implements a true microservices architecture with:
+- **6 Independent Services**: Each service has its own codebase and database
+- **5 PostgreSQL Databases**: Database per service pattern
+- **Docker Deployment**: Complete containerization with docker-compose
+- **API Gateway**: Single entry point with request routing and rate limiting
+- **Service Communication**: HTTP REST APIs between services
+
+### Architecture Diagrams
+See **ARCHITECTURE_DIAGRAMS.md** for detailed diagrams:
+1. **System Context Diagram** - High-level system overview
+2. **Container Diagram** - Microservices and databases
+3. **Deployment Diagram** - Docker deployment configuration
+
+### Microservices
+
+| Service | Port | Database | Responsibilities |
+|---------|------|----------|------------------|
+| **API Gateway** | 3000 | - | Request routing, rate limiting, static files |
+| **Auth Service** | 3001 | streamify_auth | User authentication, JWT, profiles |
+| **Video Service** | 3002 | streamify_video | Video catalog, uploads, metadata |
+| **Streaming Service** | 3003 | streamify_streaming | Playback sessions, video delivery |
+| **Billing Service** | 3004 | streamify_billing | Balance management, transactions |
+| **Analytics Service** | 3005 | streamify_analytics | Data aggregation, reporting |
+
+### Key Features
+- ✅ **Service Isolation**: Each service runs independently
+- ✅ **Database per Service**: Data isolation and independent scaling
+- ✅ **PostgreSQL Backend**: Production-ready persistent storage
+- ✅ **Docker Deployment**: One command to start everything
+- ✅ **Service Communication**: HTTP REST APIs
+- ✅ **Health Monitoring**: All services expose `/health` endpoints
+- ✅ **Rate Limiting**: Built into API Gateway
+- ✅ **Horizontal Scaling**: Scale services independently
+
 ##  Deployment Ready
 
 The application is production-ready with:
-- Environment variable support
-- Error handling middleware
-- CORS configuration
-- File upload security
-- Input validation
-- Structured logging
+- ✅ Complete Docker containerization
+- ✅ PostgreSQL databases for all services
+- ✅ Environment variable configuration
+- ✅ Error handling middleware
+- ✅ CORS configuration
+- ✅ File upload security
+- ✅ Input validation
+- ✅ Health check endpoints
+- ✅ Database connection pooling
+- ✅ Service-to-service authentication
 
 ## 🔄 Future Enhancements
 
-- Database integration (MongoDB/PostgreSQL)
+- Message queue integration (RabbitMQ/Kafka)
+- Service mesh implementation (Istio/Linkerd)
+- Monitoring stack (Prometheus + Grafana)
+- Centralized logging (ELK Stack)
 - Video transcoding and compression
 - CDN integration for video delivery
 - WebSocket support for real-time features
-- Microservices containerization with Docker
-- Load balancing and scaling configuration
+- Kubernetes deployment
+- CI/CD pipeline
+- Load balancer configuration
 
 ## 👥 Team Details
 
