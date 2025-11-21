@@ -6,13 +6,12 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy application code
 COPY . .
 
-# Copy public folder from root (frontend files)
-COPY ../../public ./public
+# Note: Public folder will be mounted as a volume
 
 # Expose port
 EXPOSE 3000
