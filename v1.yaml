@@ -3,7 +3,12 @@ info:
   title: "Streamify - Video Streaming Platform API"
   description: "Streamify is a complete video streaming platform built on a decoupled microservices architecture. It provides a robust backend system that handles everything from user authentication and video catalog management to pay-per-minute streaming, billing, and advanced analytics. The platform exposes a unified REST API through a central API Gateway, allowing client applications (web, mobile) to seamlessly interact with various backend capabilities including Auth Service, Video Service, Streaming Service, Billing Service, and Analytics Service."
   version: "1.0.0"
-host: "api.example.com"
+
+servers:
+  - url: http://localhost:3001
+    description: Auth Service
+
+host: "127.0.0.1:8080"
 basePath: "/"
 schemes:
   - "https"
@@ -19,7 +24,7 @@ paths:
     post:
       tags:
         - "Auth"
-      summary: "Create a new user account"
+      summary: "Register a new user"
       consumes:
         - "application/json"
       produces:
@@ -33,7 +38,15 @@ paths:
             $ref: "#/definitions/UserRegistration"
       responses:
         "201":
-          description: "User created successfully"
+          description: "User registered successfully"
+          schema:
+            $ref: "#/definitions/UserRegistrationResponse"
+        "400":
+          description: "Invalid request body"
+        "409":
+          description: "User already exists"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /api/auth/login:
     post:
       tags:
@@ -414,6 +427,11 @@ paths:
 definitions:
   UserRegistration:
     type: "object"
+    required:
+      - email
+      - password
+      - firstName
+      - lastName
     properties:
       email:
         type: "string"
@@ -423,8 +441,28 @@ definitions:
         type: "string"
       lastName:
         type: "string"
+
+  UserRegistrationResponse:
+    type: "object"
+    properties:
+      message:
+        type: "string"
+        example: "User created successfully"
+      userId:
+        type: "integer"
+        example: 1
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+
   UserLogin:
     type: "object"
+    required:
+      - email
+      - password
     properties:
       email:
         type: "string"
@@ -438,8 +476,8 @@ definitions:
   UserProfile:
     type: "object"
     properties:
-      _id:
-        type: "string"
+      id:
+        type: "integer"
       email:
         type: "string"
       firstName:

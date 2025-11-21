@@ -13,87 +13,147 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 app.use(cors());
 app.use(express.json());
 
+const Joi = require('joi');
+
+// Validation schema using Joi
+const registerSchema = Joi.object({
+  email: Joi.string()
+    .email({ minDomainSegments: 2, tlds: { allow: true } })
+    .lowercase()
+    .trim()
+    .required(),
+  password: Joi.string().min(8).max(64).required(),
+  firstName: Joi.string().min(2).max(50).trim().required(),
+  lastName: Joi.string().min(2).max(50).trim().required(),
+});
+
 // Register endpoint
 app.post('/api/auth/register', async (req, res) => {
   const client = await pool.connect();
-  try {
-    const { email, password, firstName, lastName } = req.body;
 
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({ error: 'All fields are required' });
+  try {
+    // ✨ Validate request body
+    const { error, value } = registerSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: "Invalid input",
+        details: error.details.map(d => d.message)
+      });
     }
+
+    const { email, password, firstName, lastName } = value;
 
     // Check if user already exists
     const existingUser = await client.query(
-      'SELECT id FROM users WHERE email = $1',
+      'SELECT id FROM users WHERE email = $1 LIMIT 1',
       [email]
     );
 
-    if (existingUser.rows.length > 0) {
+    if (existingUser.rowCount > 0) {
       return res.status(409).json({ error: 'User already exists' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Secure password hashing
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
     const result = await client.query(
-      `INSERT INTO users (email, password, first_name, last_name) 
-       VALUES ($1, $2, $3, $4) RETURNING id`,
+      `INSERT INTO users (email, password, first_name, last_name)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, email, first_name, last_name`,
       [email, hashedPassword, firstName, lastName]
     );
 
-    res.status(201).json({ 
-      message: 'User created successfully',
-      userId: result.rows[0].id
+    return res.status(201).json({
+      message: 'User registered successfully',
+      user: {
+        id: result.rows[0].id,
+        email: result.rows[0].email,
+        firstName: result.rows[0].first_name,
+        lastName: result.rows[0].last_name,
+      }
     });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+
+  } catch (err) {
+    console.error('Register Error:', err);
+
+    // 🤖 Handle common DB errors
+    if (err.code === 'ECONNREFUSED') {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    if (err.code === '23505') { // Unique constraint violation
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    return res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();
   }
 });
 
+const loginSchema = Joi.object({
+  email: Joi.string().email().trim().lowercase().required(),
+  password: Joi.string().min(8).max(64).required()
+});
+
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   const client = await pool.connect();
-  try {
-    const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+  try {
+    // Step 1: Validate input
+    const { error, value } = loginSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: "Invalid input",
+        details: error.details.map(d => d.message),
+      });
     }
 
-    // Find user
+    const { email, password } = value;
+
+    // Step 2: Fetch user (limit 1)
     const result = await client.query(
-      'SELECT id, email, password FROM users WHERE email = $1',
+      'SELECT id, email, password FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
       [email]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // Step 3: Timing-safe invalid credential response
+    if (result.rowCount === 0) {
+      // Perform dummy compare to avoid timing attack
+      await bcrypt.compare(password, "$2b$12$invalidinvalidinvalidinvalidinv");
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const user = result.rows[0];
 
-    // Verify password
+    // Step 4: Validate password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Generate token
+    // Step 5: Generate JWT
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: "24h" }
     );
 
-    res.json({ token });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.json({
+      message: "Login successful",
+      token,
+    });
+
+  } catch (err) {
+    console.error("Login error:", err);
+
+    if (err.code === "ECONNREFUSED") {
+      return res.status(503).json({ error: "Database unavailable" });
+    }
+
+    res.status(500).json({ error: "Internal server error" });
   } finally {
     client.release();
   }
@@ -102,39 +162,49 @@ app.post('/api/auth/login', async (req, res) => {
 // Verify token endpoint
 app.post('/api/auth/verify', async (req, res) => {
   const client = await pool.connect();
-  try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) {
-      return res.status(401).json({ error: 'Access token required' });
+  try {
+    const authHeader = req.headers["authorization"];
+
+    // Validate auth header
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Access token required in 'Authorization: Bearer <token>' header" });
     }
 
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-      if (err) {
-        return res.status(403).json({ error: 'Invalid token' });
-      }
+    const token = authHeader.split(" ")[1];
 
-      const result = await client.query(
-        'SELECT id, email, first_name, last_name FROM users WHERE id = $1',
-        [decoded.userId]
-      );
+    let decoded;
+    try {
+      // Verify token safely
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(403).json({ error: "Invalid or expired token" });
+    }
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
+    // Fetch user
+    const result = await client.query(
+      `SELECT id, email, first_name, last_name
+       FROM users
+       WHERE id = $1 LIMIT 1`,
+      [decoded.userId]
+    );
 
-      const user = result.rows[0];
-      res.json({
-        _id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name
-      });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = result.rows[0];
+
+    return res.json({
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name
     });
+
   } catch (error) {
-    console.error('Verify error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Verify error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   } finally {
     client.release();
   }
@@ -181,6 +251,11 @@ app.get('/api/auth/profile', async (req, res) => {
   }
 });
 
+const updateProfileSchema = Joi.object({
+  firstName: Joi.string().min(2).max(50).trim(),
+  lastName: Joi.string().min(2).max(50).trim()
+});
+
 // Update profile endpoint
 app.put('/api/auth/profile', async (req, res) => {
   const client = await pool.connect();
@@ -196,6 +271,14 @@ app.put('/api/auth/profile', async (req, res) => {
       if (err) {
         return res.status(403).json({ error: 'Invalid token' });
       }
+
+      const { error, value } = updateProfileSchema.validate(req.body);
+            if (error) {
+              return res.status(400).json({
+                error: "Invalid input",
+                details: error.details.map(d => d.message),
+              });
+            }
 
       const { firstName, lastName } = req.body;
       
