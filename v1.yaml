@@ -3,12 +3,7 @@ info:
   title: "Streamify - Video Streaming Platform API"
   description: "Streamify is a complete video streaming platform built on a decoupled microservices architecture. It provides a robust backend system that handles everything from user authentication and video catalog management to pay-per-minute streaming, billing, and advanced analytics. The platform exposes a unified REST API through a central API Gateway, allowing client applications (web, mobile) to seamlessly interact with various backend capabilities including Auth Service, Video Service, Streaming Service, Billing Service, and Analytics Service."
   version: "1.0.0"
-
-servers:
-  - url: http://localhost:3001
-    description: Auth Service
-
-host: "127.0.0.1:8080"
+host: "localhost:3001"
 basePath: "/"
 schemes:
   - "https"

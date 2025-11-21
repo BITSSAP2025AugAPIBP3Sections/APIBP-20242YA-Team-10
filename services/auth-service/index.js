@@ -9,8 +9,13 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // allow all origins (for testing). For production, restrict to your Redocly/frontend domain
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Parse JSON bodies
 app.use(express.json());
 
 const Joi = require('joi');
