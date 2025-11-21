@@ -8,7 +8,7 @@ This document contains the System Context, Container, and Deployment diagrams fo
 
 ### Overview
 The System Context diagram shows how Streamify fits into the world around it, depicting the system as a whole and its relationships with users and external systems.
-
+.
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
