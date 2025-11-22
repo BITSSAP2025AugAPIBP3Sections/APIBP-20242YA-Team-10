@@ -27,9 +27,9 @@ function showMessage(message, type = 'success') {
         console.log(`[${type.toUpperCase()}]`, message);
         return;
     }
-    
+
     messageDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
-    
+
     // Auto-hide after 5 seconds
     setTimeout(() => {
         if (messageDiv.innerHTML.includes(message)) {
@@ -49,15 +49,15 @@ function clearMessage() {
 // API request helper with error handling
 async function apiRequest(endpoint, options = {}) {
     const token = getAuthToken();
-    
+
     const defaultHeaders = {
         'Content-Type': 'application/json',
     };
-    
+
     if (token && options.requireAuth !== false) {
         defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const config = {
         ...options,
         headers: {
@@ -65,25 +65,25 @@ async function apiRequest(endpoint, options = {}) {
             ...options.headers,
         },
     };
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
         const data = await response.json();
-        
+
         if (response.status === 401 || response.status === 403) {
-            // Unauthorized - redirect to login
+            // Unauthorized - clear token and redirect to login
             localStorage.removeItem('authToken');
-            showMessage('Session expired. Please login again.', 'error');
+            showMessage('Your session has expired. Please login again.', 'error');
             setTimeout(() => {
                 window.location.href = 'login.html';
             }, 1500);
-            throw new Error('Unauthorized');
+            throw new Error('Session expired');
         }
-        
+
         if (!response.ok) {
             throw new Error(data.error || `Request failed with status ${response.status}`);
         }
-        
+
         return { success: true, data };
     } catch (error) {
         console.error('API request error:', error);
@@ -96,15 +96,15 @@ async function loadUserProfile() {
     if (!isAuthenticated()) {
         return null;
     }
-    
+
     const result = await apiRequest('/api/auth/profile', {
         method: 'GET'
     });
-    
+
     if (result.success) {
         return result.data;
     }
-    
+
     return null;
 }
 
@@ -112,14 +112,14 @@ async function loadUserProfile() {
 async function updateNavbar() {
     const userInfoDiv = document.getElementById('navUserInfo');
     if (!userInfoDiv) return;
-    
+
     if (!isAuthenticated()) {
         userInfoDiv.innerHTML = `
             <a href="login.html" class="btn btn-primary">Login</a>
         `;
         return;
     }
-    
+
     const profile = await loadUserProfile();
     if (profile) {
         userInfoDiv.innerHTML = `
@@ -134,7 +134,19 @@ async function updateNavbar() {
 // Logout function
 function logout() {
     localStorage.removeItem('authToken');
+    // Clear any other cached data
+    localStorage.removeItem('userProfile');
     showMessage('Logged out successfully', 'success');
+    setTimeout(() => {
+        window.location.href = 'login.html';
+    }, 1000);
+}
+
+// Clear all cached data (useful for troubleshooting)
+function clearAllData() {
+    localStorage.clear();
+    sessionStorage.clear();
+    showMessage('All cached data cleared', 'info');
     setTimeout(() => {
         window.location.href = 'login.html';
     }, 1000);
@@ -224,7 +236,7 @@ function initPage(pageName, requiresAuth = true) {
     if (requiresAuth && !requireAuth()) {
         return;
     }
-    
+
     updateNavbar();
     setActiveNavLink(pageName);
 }

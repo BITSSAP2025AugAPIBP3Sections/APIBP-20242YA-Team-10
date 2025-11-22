@@ -205,8 +205,8 @@ services:
 
   api-gateway:
     build:
-      context: .
-      dockerfile: services/api-gateway/Dockerfile
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
     container_name: streamify-api-gateway
     ports:
       - "3000:3000"
