@@ -32,7 +32,7 @@ app.use(express.static('public'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'OK',
     service: 'api-gateway',
     timestamp: new Date().toISOString(),
@@ -52,9 +52,9 @@ const proxyOptions = {
   logLevel: 'debug',
   onError: (err, req, res) => {
     console.error('Proxy Error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Service temporarily unavailable',
-      message: err.message 
+      message: err.message
     });
   },
   onProxyReq: (proxyReq, req, res) => {
@@ -106,7 +106,7 @@ app.get('*', (req, res) => {
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Gateway Error:', error);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? error.message : undefined
   });

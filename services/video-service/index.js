@@ -69,22 +69,24 @@ app.get('/api/videos', async (req, res) => {
     const params = [];
     let paramCount = 1;
 
+    // Filter by category
     if (category) {
       query += ` AND category = $${paramCount++}`;
       params.push(category);
     }
 
+    // Filter by search (title or description)
     if (search) {
-      query += ` AND (title ILIKE $${paramCount++} OR description ILIKE $${paramCount++})`;
+      query += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount + 1})`;
       params.push(`%${search}%`, `%${search}%`);
-      paramCount++;
+      paramCount += 2;
     }
 
+    // Pagination
     query += ` ORDER BY created_at DESC LIMIT $${paramCount++} OFFSET $${paramCount}`;
     params.push(pageSize, offset);
 
     const result = await client.query(query, params);
-
     res.json(result.rows);
   } catch (error) {
     console.error('Get videos error:', error);
@@ -93,6 +95,7 @@ app.get('/api/videos', async (req, res) => {
     client.release();
   }
 });
+
 
 // Upload new video
 app.post('/api/videos', authenticateToken, upload.single('videoFile'), async (req, res) => {
