@@ -1,0 +1,245 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Databases
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: streamify-postgres-auth
+    environment:
+      POSTGRES_DB: streamify_auth
+      POSTGRES_USER: streamify_user
+      POSTGRES_PASSWORD: streamify_pass
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    networks:
+      - streamify-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamify_user -d streamify_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-video:
+    image: postgres:15-alpine
+    container_name: streamify-postgres-video
+    environment:
+      POSTGRES_DB: streamify_video
+      POSTGRES_USER: streamify_user
+      POSTGRES_PASSWORD: streamify_pass
+    volumes:
+      - postgres-video-data:/var/lib/postgresql/data
+    networks:
+      - streamify-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamify_user -d streamify_video"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-streaming:
+    image: postgres:15-alpine
+    container_name: streamify-postgres-streaming
+    environment:
+      POSTGRES_DB: streamify_streaming
+      POSTGRES_USER: streamify_user
+      POSTGRES_PASSWORD: streamify_pass
+    volumes:
+      - postgres-streaming-data:/var/lib/postgresql/data
+    networks:
+      - streamify-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamify_user -d streamify_streaming"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-billing:
+    image: postgres:15-alpine
+    container_name: streamify-postgres-billing
+    environment:
+      POSTGRES_DB: streamify_billing
+      POSTGRES_USER: streamify_user
+      POSTGRES_PASSWORD: streamify_pass
+    volumes:
+      - postgres-billing-data:/var/lib/postgresql/data
+    networks:
+      - streamify-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamify_user -d streamify_billing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-analytics:
+    image: postgres:15-alpine
+    container_name: streamify-postgres-analytics
+    environment:
+      POSTGRES_DB: streamify_analytics
+      POSTGRES_USER: streamify_user
+      POSTGRES_PASSWORD: streamify_pass
+    volumes:
+      - postgres-analytics-data:/var/lib/postgresql/data
+    networks:
+      - streamify-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamify_user -d streamify_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Microservices
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: streamify-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      JWT_SECRET: your-secret-key-change-in-production
+      DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-auth:5432/streamify_auth
+      NODE_ENV: production
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - streamify-network
+    restart: unless-stopped
+
+  video-service:
+    build:
+      context: ./services/video-service
+      dockerfile: Dockerfile
+    container_name: streamify-video-service
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-video:5432/streamify_video
+      AUTH_SERVICE_URL: http://auth-service:3001
+      NODE_ENV: production
+    volumes:
+      - video-uploads:/app/uploads/videos
+    depends_on:
+      postgres-video:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - streamify-network
+    restart: unless-stopped
+
+  streaming-service:
+    build:
+      context: ./services/streaming-service
+      dockerfile: Dockerfile
+    container_name: streamify-streaming-service
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-streaming:5432/streamify_streaming
+      AUTH_SERVICE_URL: http://auth-service:3001
+      VIDEO_SERVICE_URL: http://video-service:3002
+      BILLING_SERVICE_URL: http://billing-service:3004
+      ANALYTICS_SERVICE_URL: http://analytics-service:3005
+      NODE_ENV: production
+    volumes:
+      - video-uploads:/app/uploads/videos:ro
+    depends_on:
+      postgres-streaming:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      video-service:
+        condition: service_started
+    networks:
+      - streamify-network
+    restart: unless-stopped
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+      dockerfile: Dockerfile
+    container_name: streamify-billing-service
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-billing:5432/streamify_billing
+      AUTH_SERVICE_URL: http://auth-service:3001
+      NODE_ENV: production
+    depends_on:
+      postgres-billing:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - streamify-network
+    restart: unless-stopped
+
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    container_name: streamify-analytics-service
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-analytics:5432/streamify_analytics
+      AUTH_SERVICE_URL: http://auth-service:3001
+      VIDEO_SERVICE_URL: http://video-service:3002
+      STREAMING_SERVICE_URL: http://streaming-service:3003
+      BILLING_SERVICE_URL: http://billing-service:3004
+      NODE_ENV: production
+    depends_on:
+      postgres-analytics:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - streamify-network
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: streamify-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      VIDEO_SERVICE_URL: http://video-service:3002
+      STREAMING_SERVICE_URL: http://streaming-service:3003
+      BILLING_SERVICE_URL: http://billing-service:3004
+      ANALYTICS_SERVICE_URL: http://analytics-service:3005
+      NODE_ENV: production
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+    volumes:
+      - ./public:/app/public:ro
+    depends_on:
+      - auth-service
+      - video-service
+      - streaming-service
+      - billing-service
+      - analytics-service
+    networks:
+      - streamify-network
+    restart: unless-stopped
+
+networks:
+  streamify-network:
+    driver: bridge
+
+volumes:
+  postgres-auth-data:
+  postgres-video-data:
+  postgres-streaming-data:
+  postgres-billing-data:
+  postgres-analytics-data:
+  video-uploads:

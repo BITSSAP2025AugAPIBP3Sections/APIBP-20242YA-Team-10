@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Streamify</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">🎬 Streamify</div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="videos.html" class="nav-link">Videos</a>
+                <a href="streaming.html" class="nav-link">Streaming</a>
+                <a href="billing.html" class="nav-link">Billing</a>
+                <a href="analytics.html" class="nav-link">Analytics</a>
+            </div>
+            <div id="navUserInfo"></div>
+        </nav>
+
+        <div id="message"></div>
+
+        <!-- Auth Service - Profile Management -->
+        <div class="card">
+            <div class="card-header">
+                <h2>👤 User Profile - Auth Service</h2>
+            </div>
+            <div class="card-body">
+                <p>Manage your account information and profile details.</p>
+            </div>
+        </div>
+
+        <!-- Profile Information -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Profile Information</h2>
+            </div>
+            <div class="card-body">
+                <div id="profileInfo">
+                    <p>Loading profile...</p>
+                </div>
+                <div class="btn-group mt-3">
+                    <button onclick="showEditModal()" class="btn btn-primary">Edit Profile</button>
+                    <button onclick="loadProfile()" class="btn btn-secondary">Refresh</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Statistics -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Account Statistics</h2>
+            </div>
+            <div id="accountStats">
+                <p>Loading statistics...</p>
+            </div>
+        </div>
+
+        <!-- Edit Profile Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Edit Profile</h2>
+                    <button class="modal-close" onclick="closeEditModal()">&times;</button>
+                </div>
+                <form onsubmit="handleUpdate(event)">
+                    <div class="form-group">
+                        <label for="firstName">First Name *</label>
+                        <input type="text" id="firstName" required placeholder="Enter your first name">
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name *</label>
+                        <input type="text" id="lastName" required placeholder="Enter your last name">
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        // Initialize page
+        initPage('profile.html', true);
+
+        let currentProfile = null;
+
+        // Load profile
+        async function loadProfile() {
+            showLoading('profileInfo');
+            
+            const result = await apiRequest('/api/auth/profile', {
+                method: 'GET'
+            });
+            
+            if (result.success) {
+                currentProfile = result.data;
+                displayProfile(result.data);
+                loadAccountStats();
+            } else {
+                document.getElementById('profileInfo').innerHTML = 
+                    `<p class="error">Error loading profile: ${result.error}</p>`;
+            }
+        }
+
+        // Display profile
+        function displayProfile(profile) {
+            document.getElementById('profileInfo').innerHTML = `
+                <div class="grid grid-2">
+                    <div>
+                        <p><strong>User ID:</strong></p>
+                        <p>${profile._id}</p>
+                    </div>
+                    <div>
+                        <p><strong>Email:</strong></p>
+                        <p>${profile.email}</p>
+                    </div>
+                    <div>
+                        <p><strong>First Name:</strong></p>
+                        <p>${profile.firstName}</p>
+                    </div>
+                    <div>
+                        <p><strong>Last Name:</strong></p>
+                        <p>${profile.lastName}</p>
+                    </div>
+                    <div>
+                        <p><strong>Full Name:</strong></p>
+                        <p>${profile.firstName} ${profile.lastName}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load account statistics
+        async function loadAccountStats() {
+            showLoading('accountStats');
+            
+            // Load balance
+            const balanceResult = await apiRequest('/api/billing/balance', {
+                method: 'GET'
+            });
+            
+            // Load user activity
+            const activityResult = await apiRequest('/api/analytics/user', {
+                method: 'GET'
+            });
+            
+            let balance = 0;
+            let totalSpent = 0;
+            let totalWatchTime = 0;
+            let sessions = 0;
+            
+            if (balanceResult.success) {
+                balance = balanceResult.data.balance;
+            }
+            
+            if (activityResult.success) {
+                totalSpent = activityResult.data.totalSpent;
+                totalWatchTime = activityResult.data.totalWatchTime;
+                sessions = activityResult.data.history.length;
+            }
+            
+            document.getElementById('accountStats').innerHTML = `
+                <div class="grid grid-4">
+                    <div class="stat-card">
+                        <h3>${formatCurrency(balance)}</h3>
+                        <p>Current Balance</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${formatCurrency(totalSpent)}</h3>
+                        <p>Total Spent</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${Math.floor(totalWatchTime / 60)}</h3>
+                        <p>Watch Time (min)</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${sessions}</h3>
+                        <p>Total Sessions</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show edit modal
+        function showEditModal() {
+            if (!currentProfile) return;
+            
+            document.getElementById('firstName').value = currentProfile.firstName;
+            document.getElementById('lastName').value = currentProfile.lastName;
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        // Close edit modal
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        // Handle update
+        async function handleUpdate(event) {
+            event.preventDefault();
+            
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            
+            const result = await apiRequest('/api/auth/profile', {
+                method: 'PUT',
+                body: JSON.stringify({ firstName, lastName })
+            });
+            
+            if (result.success) {
+                showMessage('Profile updated successfully!', 'success');
+                closeEditModal();
+                loadProfile();
+                updateNavbar(); // Update navbar with new name
+            } else {
+                showMessage(result.error || 'Update failed', 'error');
+            }
+        }
+
+        // Load profile on page load
+        loadProfile();
+    </script>
+</body>
+</html>
