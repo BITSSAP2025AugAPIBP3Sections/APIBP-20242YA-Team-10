@@ -3,7 +3,7 @@ info:
   title: "Streamify - Video Streaming Platform API"
   description: "Streamify is a complete video streaming platform built on a decoupled microservices architecture. It provides a robust backend system that handles everything from user authentication and video catalog management to pay-per-minute streaming, billing, and advanced analytics. The platform exposes a unified REST API through a central API Gateway, allowing client applications (web, mobile) to seamlessly interact with various backend capabilities including Auth Service, Video Service, Streaming Service, Billing Service, and Analytics Service."
   version: "1.0.0"
-host: "api.example.com"
+host: "localhost:3000"
 basePath: "/"
 schemes:
   - "https"
@@ -19,7 +19,7 @@ paths:
     post:
       tags:
         - "Auth"
-      summary: "Create a new user account"
+      summary: "Register a new user"
       consumes:
         - "application/json"
       produces:
@@ -33,7 +33,15 @@ paths:
             $ref: "#/definitions/UserRegistration"
       responses:
         "201":
-          description: "User created successfully"
+          description: "User registered successfully"
+          schema:
+            $ref: "#/definitions/UserRegistrationResponse"
+        "400":
+          description: "Invalid request body"
+        "409":
+          description: "User already exists"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /api/auth/login:
     post:
       tags:
@@ -55,6 +63,20 @@ paths:
           description: "Authentication successful"
           schema:
             $ref: "#/definitions/AuthToken"
+        "400":
+          description: "Invalid request body (missing or malformed fields)"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Email and password are required"
+        "401":
+          description: "Invalid credentials or unauthorized"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: "Invalid email or password"
   /api/auth/verify:
     post:
       tags:
@@ -292,7 +314,7 @@ paths:
         - "Billing"
       summary: "Get current user balance"
       security:
-        - Bearer: []
+        - Bearer: [ ]
       produces:
         - "application/json"
       responses:
@@ -302,18 +324,19 @@ paths:
             $ref: "#/definitions/BillingAccount"
         "401":
           description: "Unauthorized"
+
   /api/billing/deposit:
     post:
       tags:
         - "Billing"
       summary: "Mock deposit funds"
       security:
-        - Bearer: []
+        - Bearer: [ ]
       consumes:
         - "application/json"
       parameters:
-        - in: "body"
-          name: "body"
+        - in: body
+          name: body
           required: true
           schema:
             $ref: "#/definitions/DepositRequest"
@@ -322,6 +345,116 @@ paths:
           description: "Deposit successful"
         "401":
           description: "Unauthorized"
+
+  /api/billing/account/create:
+    post:
+      tags:
+        - "Billing"
+      summary: "Create billing account for a new user"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "User ID for the new billing account"
+          required: "true"
+          schema:
+            type: "object"
+            required:
+              - "userId"
+            properties:
+              userId:
+                type: "string"
+      responses:
+        "201":
+          description: "Billing account created successfully"
+          schema:
+            type: "object"
+            properties:
+              message:
+                type: "string"
+        "400":
+          description: "Missing user ID"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /api/billing/charge:
+    post:
+      tags:
+        - "Billing"
+      summary: "Charge a user for streaming"
+      description: "Deducts an amount from a user's billing account and records the transaction. Called by the streaming service."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            $ref: "#/definitions/ChargeRequest"
+      responses:
+        "200":
+          description: "Charge successful"
+          schema:
+            $ref: "#/definitions/ChargeResponse"
+        "400":
+          description: "Missing required fields"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "402":
+          description: "Insufficient funds"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "404":
+          description: "Billing account not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /api/billing/transactions:
+    get:
+      tags:
+        - "Billing"
+      summary: "Get transaction history for the current user"
+      security:
+        - Bearer: [ ]
+      produces:
+        - "application/json"
+      parameters:
+        - name: "limit"
+          in: "query"
+          type: "integer"
+          description: "Number of records to return (default 50)"
+        - name: "offset"
+          in: "query"
+          type: "integer"
+          description: "Pagination offset (default 0)"
+      responses:
+        "200":
+          description: "Transaction history retrieved successfully"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Transaction"
+        "401":
+          description: "Unauthorized"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "500":
+          description: "Internal server error"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /api/analytics/dashboard:
     get:
       tags:
@@ -414,6 +547,11 @@ paths:
 definitions:
   UserRegistration:
     type: "object"
+    required:
+      - email
+      - password
+      - firstName
+      - lastName
     properties:
       email:
         type: "string"
@@ -423,8 +561,28 @@ definitions:
         type: "string"
       lastName:
         type: "string"
+
+  UserRegistrationResponse:
+    type: "object"
+    properties:
+      message:
+        type: "string"
+        example: "User created successfully"
+      userId:
+        type: "integer"
+        example: 1
+
+  ErrorResponse:
+    type: "object"
+    properties:
+      error:
+        type: "string"
+
   UserLogin:
     type: "object"
+    required:
+      - email
+      - password
     properties:
       email:
         type: "string"
@@ -438,8 +596,8 @@ definitions:
   UserProfile:
     type: "object"
     properties:
-      _id:
-        type: "string"
+      id:
+        type: "integer"
       email:
         type: "string"
       firstName:
@@ -542,3 +700,45 @@ definitions:
         type: "integer"
       monthly:
         type: "integer"
+  ChargeRequest:
+    type: "object"
+    required:
+      - userId
+      - amount
+    properties:
+      userId:
+        type: "string"
+        description: "ID of the user to charge"
+      amount:
+        type: "number"
+        description: "Amount to deduct"
+      sessionId:
+        type: "string"
+        description: "Streaming session ID (optional)"
+
+  ChargeResponse:
+    type: "object"
+    properties:
+      message:
+        type: "string"
+      remainingBalance:
+        type: "number"
+
+  Transaction:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+      user_id:
+        type: "string"
+      amount:
+        type: "number"
+      transaction_type:
+        type: "string"
+      description:
+        type: "string"
+      session_id:
+        type: "string"
+      created_at:
+        type: "string"
+        format: date-time

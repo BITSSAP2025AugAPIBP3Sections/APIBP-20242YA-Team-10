@@ -26,7 +26,7 @@ const authenticateToken = async (req, res, next) => {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
-    req.user = { userId: response.data._id };
+    req.user = { userId: response.data.id };
     next();
   } catch (error) {
     if (error.response && error.response.status === 403) {

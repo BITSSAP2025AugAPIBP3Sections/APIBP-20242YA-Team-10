@@ -64,7 +64,7 @@ app.post('/api/analytics/track', async (req, res) => {
       );
     } else {
       await client.query(
-        `UPDATE video_analytics 
+        `UPDATE video_analytics
          SET total_watch_time = total_watch_time + $1,
              total_revenue = total_revenue + $2,
              updated_at = CURRENT_TIMESTAMP
@@ -95,7 +95,7 @@ app.post('/api/analytics/track', async (req, res) => {
       );
     } else {
       await client.query(
-        `UPDATE platform_metrics 
+        `UPDATE platform_metrics
          SET total_watch_time = total_watch_time + $1,
              total_revenue = total_revenue + $2
          WHERE metric_date = $3`,
@@ -124,7 +124,7 @@ app.get('/api/analytics/dashboard', async (req, res) => {
 
     // Get video analytics summary
     const videoStats = await client.query(
-      `SELECT 
+      `SELECT
         SUM(total_views) as total_views,
         SUM(total_watch_time) as total_watch_time,
         SUM(total_revenue) as total_revenue
@@ -187,9 +187,9 @@ app.get('/api/analytics/user', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const activities = await client.query(
-      `SELECT * FROM user_activities 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
+      `SELECT * FROM user_activities
+       WHERE user_id = $1
+       ORDER BY created_at DESC
        LIMIT 50`,
       [req.user.userId]
     );
@@ -216,8 +216,8 @@ app.get('/api/analytics/top-videos', async (req, res) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT * FROM video_analytics 
-       ORDER BY total_views DESC 
+      `SELECT * FROM video_analytics
+       ORDER BY total_views DESC
        LIMIT 10`
     );
 
@@ -271,14 +271,14 @@ app.get('/api/analytics/reports/:period', async (req, res) => {
   const client = await pool.connect();
   try {
     const { period } = req.params;
-    
+
     if (!['daily', 'weekly', 'monthly'].includes(period)) {
       return res.status(400).json({ error: 'Invalid period' });
     }
 
     let dateFilter;
     const today = new Date().toISOString().split('T')[0];
-    
+
     if (period === 'daily') {
       dateFilter = today;
     } else if (period === 'weekly') {
@@ -288,11 +288,11 @@ app.get('/api/analytics/reports/:period', async (req, res) => {
     }
 
     const result = await client.query(
-      `SELECT 
+      `SELECT
         SUM(total_views) as total_views,
         SUM(total_watch_time) as total_watch_time,
         SUM(total_revenue) as total_revenue
-       FROM platform_metrics 
+       FROM platform_metrics
        WHERE metric_date >= $1`,
       [dateFilter]
     );

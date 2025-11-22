@@ -47,7 +47,7 @@ const authenticateToken = async (req, res, next) => {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
-    req.user = { userId: response.data._id };
+    req.user = { userId: response.data.id };
     next();
   } catch (error) {
     if (error.response && error.response.status === 403) {
@@ -69,22 +69,24 @@ app.get('/api/videos', async (req, res) => {
     const params = [];
     let paramCount = 1;
 
+    // Filter by category
     if (category) {
       query += ` AND category = $${paramCount++}`;
       params.push(category);
     }
 
+    // Filter by search (title or description)
     if (search) {
-      query += ` AND (title ILIKE $${paramCount++} OR description ILIKE $${paramCount++})`;
+      query += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount + 1})`;
       params.push(`%${search}%`, `%${search}%`);
-      paramCount++;
+      paramCount += 2;
     }
 
+    // Pagination
     query += ` ORDER BY created_at DESC LIMIT $${paramCount++} OFFSET $${paramCount}`;
     params.push(pageSize, offset);
 
     const result = await client.query(query, params);
-
     res.json(result.rows);
   } catch (error) {
     console.error('Get videos error:', error);
@@ -94,33 +96,51 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
+
 // Upload new video
 app.post('/api/videos', authenticateToken, upload.single('videoFile'), async (req, res) => {
   const client = await pool.connect();
   try {
-    const { title, description, category = 'general', pricePerMinute = 10 } = req.body;
 
-    if (!title || !req.file) {
-      return res.status(400).json({ error: 'Title and video file are required' });
+    const { title, description = '', category = 'general', pricePerMinute = 10 } = req.body;
+
+    // Validate required fields
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Video file is required' });
+    }
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    // Parse pricePerMinute safely
+    const price = parseInt(pricePerMinute);
+    if (isNaN(price) || price < 0) {
+      return res.status(400).json({ error: 'Invalid pricePerMinute' });
+    }
+
+    // Insert into database
     const result = await client.query(
       `INSERT INTO videos (title, description, category, duration, price_per_minute, filename, uploaded_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, description || '', category, 300, parseInt(pricePerMinute), req.file.filename, req.user.userId]
+      [title, description, category, 300, price, req.file.filename, req.user.userId]
     );
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Video uploaded successfully',
       video: result.rows[0]
     });
   } catch (error) {
-    console.error('Upload video error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Upload video error:', error.message);
+    console.error(error.stack);
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
+
 
 // Get specific video by ID
 app.get('/api/videos/:id', async (req, res) => {
@@ -184,7 +204,7 @@ app.put('/api/videos/:id', authenticateToken, async (req, res) => {
     values.push(req.params.id);
 
     await client.query(
-      `UPDATE videos SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+      `UPDATE videos SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
        WHERE id = $${paramCount}`,
       values
     );
@@ -236,10 +256,10 @@ app.delete('/api/videos/:id', authenticateToken, async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     service: 'video-service',
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString()
   });
 });
 
