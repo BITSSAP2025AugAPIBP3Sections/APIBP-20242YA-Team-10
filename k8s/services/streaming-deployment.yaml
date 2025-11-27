@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streaming-service
+  namespace: streamify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streaming-service
+  template:
+    metadata:
+      labels:
+        app: streaming-service
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: streaming-service
+          image: shruthiupadhya/streaming-service:v1
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_HOST
+              value: postgres-streaming
+            - name: DB_NAME
+              value: streamingdb
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-streaming-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-streaming-secret
+                  key: password
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

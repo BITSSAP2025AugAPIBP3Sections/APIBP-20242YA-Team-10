@@ -177,6 +177,9 @@ paths:
         - in: "formData"
           name: "description"
           type: "string"
+        - in: "formData"
+          name: "category"
+          type: "string"
       responses:
         "201":
           description: "Video uploaded successfully"
