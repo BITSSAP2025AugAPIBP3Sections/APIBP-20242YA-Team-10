@@ -16,9 +16,10 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: analytics-service
-          image: shruthiupadhya/analytics-service:v1
+          image: streamify-analytics
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8083
+            - containerPort: 3005
           env:
             - name: DB_HOST
               value: postgres-analytics

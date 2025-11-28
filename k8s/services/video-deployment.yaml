@@ -16,9 +16,10 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: video-service
-          image: shruthiupadhya/video-service:v1
+          image: streamify-video
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - containerPort: 3002
           env:
             - name: DB_HOST
               value: postgres-video

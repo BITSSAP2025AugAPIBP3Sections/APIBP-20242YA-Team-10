@@ -8,5 +8,5 @@ spec:
   selector:
     app: analytics-service
   ports:
-    - port: 8083
-      targetPort: 8083
+    - port: 3005
+      targetPort: 3005

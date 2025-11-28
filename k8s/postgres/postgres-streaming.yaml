@@ -56,4 +56,4 @@ spec:
       volumes:
         - name: streaming-db-storage
           persistentVolumeClaim:
-            claimName: pvc-postgres-streamin
+            claimName: pvc-postgres-streaming

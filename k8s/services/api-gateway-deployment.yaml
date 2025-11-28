@@ -16,7 +16,8 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: api-gateway
-          image: shruthiupadhya/api-gateway-service:v1   # <-- replace after pushing to DockerHub
+          image: streamify-api-gateway
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
           resources:

@@ -16,9 +16,10 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: billing-service
-          image: shruthiupadhya/billing-service:v1
+          image: streamify-billing
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8082
+            - containerPort: 3004
           env:
             - name: DB_HOST
               value: postgres-billing

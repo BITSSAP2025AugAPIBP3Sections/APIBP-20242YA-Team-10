@@ -16,7 +16,8 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: auth-service
-          image: shruthiupadhya/auth-service:v1
+          image: streamify-auth
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3001
           env:

@@ -16,9 +16,10 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: streaming-service
-          image: shruthiupadhya/streaming-service:v1
+          image: streamify-streaming
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8081
+            - containerPort: 3003
           env:
             - name: DB_HOST
               value: postgres-streaming

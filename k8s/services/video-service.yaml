@@ -8,5 +8,5 @@ spec:
   selector:
     app: video-service
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 3002
+      targetPort: 3002

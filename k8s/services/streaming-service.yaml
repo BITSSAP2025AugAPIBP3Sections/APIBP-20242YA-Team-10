@@ -8,5 +8,5 @@ spec:
   selector:
     app: streaming-service
   ports:
-    - port: 8081
-      targetPort: 8081
+    - port: 3003
+      targetPort: 3003

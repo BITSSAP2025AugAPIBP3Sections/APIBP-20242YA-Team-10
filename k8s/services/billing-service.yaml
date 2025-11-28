@@ -8,5 +8,5 @@ spec:
   selector:
     app: billing-service
   ports:
-    - port: 8082
-      targetPort: 8082
+    - port: 3004
+      targetPort: 3004
