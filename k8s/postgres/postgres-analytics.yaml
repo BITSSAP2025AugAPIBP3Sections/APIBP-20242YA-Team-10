@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-postgres-analytics
+  namespace: streamify
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-analytics
+  namespace: streamify
+spec:
+  selector:
+    matchLabels:
+      app: postgres-analytics
+  template:
+    metadata:
+      labels:
+        app: postgres-analytics
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: postgres-analytics
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: analyticsdb
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-analytics-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-analytics-secret
+                  key: password
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: analytics-db-storage
+      volumes:
+        - name: analytics-db-storage
+          persistentVolumeClaim:
+            claimName: pvc-postgres-analytics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-analytics
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-analytics
+  ports:
+    - port: 5432
+      targetPort: 5432

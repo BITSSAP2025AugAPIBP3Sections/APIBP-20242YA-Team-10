@@ -11,250 +11,257 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
 
+// -------------------------
 // Middleware
+// -------------------------
 app.use(cors());
 app.use(express.json());
 
-// File upload configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/videos';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
 
-const upload = multer({ storage: storage });
+// ------------------------------------------------------
+// Central response helper
+// ------------------------------------------------------
+const sendError = (res, status, message) => {
+  console.error("❌ ERROR:", message);
+  return res.status(status).json({ error: message });
+};
 
-// Authentication middleware - verifies token with auth service
+
+// ------------------------------------------------------
+// Authentication middleware
+// ------------------------------------------------------
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    if (!authHeader) return sendError(res, 401, "Access token required");
 
-    if (!token) {
-      return res.status(401).json({ error: 'Access token required' });
-    }
+    const token = authHeader.split(" ")[1];
+    if (!token) return sendError(res, 401, "Invalid Authorization header format");
 
-    // Verify token with auth service
-    const response = await axios.post(`${AUTH_SERVICE_URL}/api/auth/verify`, {}, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const result = await axios.post(
+      `${AUTH_SERVICE_URL}/api/auth/verify`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-    req.user = { userId: response.data.id };
+    req.user = { userId: result.data.id };
     next();
+
   } catch (error) {
-    if (error.response && error.response.status === 403) {
-      return res.status(403).json({ error: 'Invalid token' });
-    }
-    return res.status(401).json({ error: 'Authentication failed' });
+    if (error.response?.status === 403)
+      return sendError(res, 403, "Invalid token");
+
+    return sendError(res, 401, "Authentication failed");
   }
 };
 
-// Get all videos with filtering and pagination
+
+// ------------------------------------------------------
+// Multer upload config
+// ------------------------------------------------------
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/videos";
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `video-${unique}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({ storage });
+
+
+// ------------------------------------------------------
+// GET: List videos with filters & pagination
+// ------------------------------------------------------
 app.get('/api/videos', async (req, res) => {
   const client = await pool.connect();
   try {
     const { category, search, page = 1 } = req.query;
     const pageSize = 10;
-    const offset = (page - 1) * pageSize;
+    const offset = (Number(page) - 1) * pageSize;
 
-    let query = 'SELECT * FROM videos WHERE 1=1';
+    let query = `SELECT * FROM videos WHERE 1=1`;
     const params = [];
-    let paramCount = 1;
+    let idx = 1;
 
-    // Filter by category
     if (category) {
-      query += ` AND category = $${paramCount++}`;
+      query += ` AND category = $${idx++}`;
       params.push(category);
     }
 
-    // Filter by search (title or description)
     if (search) {
-      query += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount + 1})`;
+      query += ` AND (title ILIKE $${idx} OR description ILIKE $${idx + 1})`;
       params.push(`%${search}%`, `%${search}%`);
-      paramCount += 2;
+      idx += 2;
     }
 
-    // Pagination
-    query += ` ORDER BY created_at DESC LIMIT $${paramCount++} OFFSET $${paramCount}`;
+    query += ` ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx}`;
     params.push(pageSize, offset);
 
     const result = await client.query(query, params);
     res.json(result.rows);
-  } catch (error) {
-    console.error('Get videos error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+
+  } catch (err) {
+    console.error(err);
+    sendError(res, 500, "Failed to fetch videos");
   } finally {
     client.release();
   }
 });
 
 
-// Upload new video
+// ------------------------------------------------------
+// POST: Upload a video
+// ------------------------------------------------------
 app.post('/api/videos', authenticateToken, upload.single('videoFile'), async (req, res) => {
   const client = await pool.connect();
-  try {
 
+  try {
     const { title, description = '', category = 'general', pricePerMinute = 10 } = req.body;
 
-    // Validate required fields
-    if (!title) {
-      return res.status(400).json({ error: 'Title is required' });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: 'Video file is required' });
-    }
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
+    if (!title) return sendError(res, 400, "Title is required");
+    if (!req.file) return sendError(res, 400, "Video file is required");
 
-    // Parse pricePerMinute safely
-    const price = parseInt(pricePerMinute);
-    if (isNaN(price) || price < 0) {
-      return res.status(400).json({ error: 'Invalid pricePerMinute' });
-    }
+    const price = Number(pricePerMinute);
+    if (isNaN(price) || price < 0)
+      return sendError(res, 400, "Invalid pricePerMinute");
 
-    // Insert into database
     const result = await client.query(
       `INSERT INTO videos (title, description, category, duration, price_per_minute, filename, uploaded_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, description, category, 300, price, req.file.filename, req.user.userId]
+      [
+        title,
+        description,
+        category,
+        300,                          // Hardcoded duration
+        price,
+        req.file.filename,
+        req.user.userId
+      ]
     );
 
     res.status(201).json({
-      message: 'Video uploaded successfully',
+      message: "Video uploaded successfully",
       video: result.rows[0]
     });
-  } catch (error) {
-    console.error('Upload video error:', error.message);
-    console.error(error.stack);
-    res.status(500).json({ error: error.message });
+
+  } catch (err) {
+    console.error(err);
+    sendError(res, 500, "Failed to upload video");
   } finally {
     client.release();
   }
 });
 
 
-// Get specific video by ID
+// ------------------------------------------------------
+// GET: Single video by ID
+// ------------------------------------------------------
 app.get('/api/videos/:id', async (req, res) => {
   const client = await pool.connect();
-  try {
-    const result = await client.query(
-      'SELECT * FROM videos WHERE id = $1',
-      [req.params.id]
-    );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
+  try {
+    const id = req.params.id;
+
+    const result = await client.query(`SELECT * FROM videos WHERE id = $1`, [id]);
+    if (result.rows.length === 0)
+      return sendError(res, 404, "Video not found");
 
     res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Get video error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+
+  } catch (err) {
+    console.error(err);
+    sendError(res, 500, "Error retrieving video");
   } finally {
     client.release();
   }
 });
 
-// Update video metadata
+
+// ------------------------------------------------------
+// PUT: Update video metadata
+// ------------------------------------------------------
 app.put('/api/videos/:id', authenticateToken, async (req, res) => {
   const client = await pool.connect();
+
   try {
     const { title, description } = req.body;
 
-    // Check if video exists and user owns it
-    const videoCheck = await client.query(
-      'SELECT uploaded_by FROM videos WHERE id = $1',
-      [req.params.id]
-    );
+    const check = await client.query(`SELECT uploaded_by FROM videos WHERE id = $1`, [req.params.id]);
+    if (check.rows.length === 0) return sendError(res, 404, "Video not found");
 
-    if (videoCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-
-    if (videoCheck.rows[0].uploaded_by !== req.user.userId) {
-      return res.status(403).json({ error: 'Unauthorized to edit this video' });
-    }
+    if (check.rows[0].uploaded_by !== req.user.userId)
+      return sendError(res, 403, "Unauthorized to edit this video");
 
     const updates = [];
     const values = [];
-    let paramCount = 1;
+    let idx = 1;
 
-    if (title) {
-      updates.push(`title = $${paramCount++}`);
-      values.push(title);
-    }
-    if (description) {
-      updates.push(`description = $${paramCount++}`);
-      values.push(description);
-    }
+    if (title) { updates.push(`title = $${idx++}`); values.push(title); }
+    if (description) { updates.push(`description = $${idx++}`); values.push(description); }
 
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
+    if (updates.length === 0)
+      return sendError(res, 400, "No fields to update");
 
     values.push(req.params.id);
 
     await client.query(
-      `UPDATE videos SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $${paramCount}`,
+      `UPDATE videos SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
       values
     );
 
-    res.json({ message: 'Video updated successfully' });
-  } catch (error) {
-    console.error('Update video error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.json({ message: "Video updated successfully" });
+
+  } catch (err) {
+    console.error(err);
+    sendError(res, 500, "Failed to update video");
   } finally {
     client.release();
   }
 });
 
-// Delete video
+
+// ------------------------------------------------------
+// DELETE: Remove video
+// ------------------------------------------------------
 app.delete('/api/videos/:id', authenticateToken, async (req, res) => {
   const client = await pool.connect();
+
   try {
-    // Check if video exists and user owns it
-    const videoCheck = await client.query(
-      'SELECT uploaded_by, filename FROM videos WHERE id = $1',
+    const check = await client.query(
+      `SELECT uploaded_by, filename FROM videos WHERE id = $1`,
       [req.params.id]
     );
 
-    if (videoCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
+    if (check.rows.length === 0)
+      return sendError(res, 404, "Video not found");
 
-    if (videoCheck.rows[0].uploaded_by !== req.user.userId) {
-      return res.status(403).json({ error: 'Unauthorized to delete this video' });
-    }
+    if (check.rows[0].uploaded_by !== req.user.userId)
+      return sendError(res, 403, "Unauthorized to delete this video");
 
-    // Delete from database
-    await client.query('DELETE FROM videos WHERE id = $1', [req.params.id]);
+    await client.query(`DELETE FROM videos WHERE id = $1`, [req.params.id]);
 
-    // Delete file
-    const filePath = path.join(__dirname, 'uploads/videos', videoCheck.rows[0].filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    const filepath = path.join(__dirname, 'uploads/videos', check.rows[0].filename);
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
 
     res.status(204).send();
-  } catch (error) {
-    console.error('Delete video error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+
+  } catch (err) {
+    console.error(err);
+    sendError(res, 500, "Failed to delete video");
   } finally {
     client.release();
   }
 });
 
-// Health check endpoint
+
+// ------------------------------------------------------
+// Health Check
+// ------------------------------------------------------
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -263,21 +270,18 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error(error);
-  res.status(500).json({ error: 'Internal server error' });
-});
 
-// Initialize database and start server
+// ------------------------------------------------------
+// Start Server
+// ------------------------------------------------------
 initDB()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Video Service running on port ${PORT}`);
+      console.log(`🎬 Video Service running at http://localhost:${PORT}`);
     });
   })
   .catch(err => {
-    console.error('Failed to initialize database:', err);
+    console.error("Failed to initialize DB", err);
     process.exit(1);
   });
 

@@ -8,10 +8,8 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Copy application code
+# Copy application code including public folder
 COPY . .
-
-# Note: Public folder will be mounted as a volume
 
 # Expose port
 EXPOSE 3000

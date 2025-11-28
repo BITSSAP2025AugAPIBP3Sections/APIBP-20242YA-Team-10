@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-postgres-video
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-video
+spec:
+  selector:
+    matchLabels:
+      app: postgres-video
+  template:
+    metadata:
+      labels:
+        app: postgres-video
+    spec:
+      containers:
+        - name: postgres-video
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: videodb
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-video-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-video-secret
+                  key: password
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: video-db-storage
+      volumes:
+        - name: video-db-storage
+          persistentVolumeClaim:
+            claimName: pvc-postgres-video
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-video
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-video
+  ports:
+    - port: 5432
+      targetPort: 5432

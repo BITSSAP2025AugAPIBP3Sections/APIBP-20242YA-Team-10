@@ -16,7 +16,6 @@ const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://local
 
 // Middleware
 app.use(cors());
-app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
@@ -26,6 +25,16 @@ const limiter = rateLimit({
 });
 
 app.use('/api/', limiter);
+
+// Parse JSON only for non-proxy routes (health checks, etc.)
+// DO NOT parse JSON for /api/* routes as proxy will handle it
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) {
+    express.json({ limit: '50mb' })(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // Serve static files (frontend)
 app.use(express.static('public'));
@@ -46,20 +55,40 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Proxy configuration options
+// Proxy configuration options with increased timeouts
 const proxyOptions = {
   changeOrigin: true,
   logLevel: 'debug',
+  timeout: 60000,           // 60 seconds timeout
+  proxyTimeout: 60000,      // 60 seconds proxy timeout
+  ws: true,                 // Enable websocket proxying
   onError: (err, req, res) => {
     console.error('Proxy Error:', err);
-    res.status(500).json({
-      error: 'Service temporarily unavailable',
-      message: err.message
-    });
+    if (!res.headersSent) {
+      res.status(502).json({
+        error: 'Bad Gateway',
+        message: 'Service temporarily unavailable',
+        details: err.message
+      });
+    }
   },
   onProxyReq: (proxyReq, req, res) => {
     // Log proxy requests
     console.log(`[${new Date().toISOString()}] Proxying ${req.method} ${req.url}`);
+
+    // Set keep-alive and timeouts
+    proxyReq.setHeader('Connection', 'keep-alive');
+    proxyReq.setTimeout(60000);
+
+    // Increase socket timeout
+    if (proxyReq.socket) {
+      proxyReq.socket.setTimeout(60000);
+      proxyReq.socket.setKeepAlive(true);
+    }
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    // Log proxy responses
+    console.log(`[${new Date().toISOString()}] Response ${proxyRes.statusCode} for ${req.method} ${req.url}`);
   }
 };
 
@@ -113,7 +142,7 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API Gateway running on port ${PORT}`);
   console.log(`Frontend: http://localhost:${PORT}`);
   console.log(`API: http://localhost:${PORT}/api`);
@@ -124,5 +153,10 @@ app.listen(PORT, () => {
   console.log(`  - Billing Service: ${BILLING_SERVICE_URL}`);
   console.log(`  - Analytics Service: ${ANALYTICS_SERVICE_URL}`);
 });
+
+// Set server timeouts
+server.timeout = 60000; // 60 seconds
+server.keepAliveTimeout = 65000; // 65 seconds (longer than timeout)
+server.headersTimeout = 66000; // 66 seconds (longer than keepAliveTimeout)
 
 module.exports = app;

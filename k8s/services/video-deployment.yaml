@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-service
+  namespace: streamify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-service
+  template:
+    metadata:
+      labels:
+        app: video-service
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: video-service
+          image: streamify-video
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3002
+          env:
+            - name: DB_HOST
+              value: postgres-video
+            - name: DB_NAME
+              value: videodb
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-video-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-video-secret
+                  key: password
+            - name: VIDEO_UPLOAD_PATH
+              value: /uploads
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: video-uploads
+              mountPath: /uploads
+      volumes:
+        - name: video-uploads
+          persistentVolumeClaim:
+            claimName: pvc-video-uploads

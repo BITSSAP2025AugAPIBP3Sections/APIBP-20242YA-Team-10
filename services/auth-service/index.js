@@ -15,10 +15,33 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Parse JSON bodies
-app.use(express.json());
+// Parse JSON bodies with increased limit and timeout
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Set server timeout to 30 seconds
+app.use((req, res, next) => {
+  req.setTimeout(30000); // 30 seconds
+  res.setTimeout(30000); // 30 seconds
+  next();
+});
+
+// Request logging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 
 const Joi = require('joi');
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'auth-service',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Validation schema using Joi
 const registerSchema = Joi.object({
@@ -35,11 +58,15 @@ const registerSchema = Joi.object({
 // Register endpoint
 app.post('/api/auth/register', async (req, res) => {
   const client = await pool.connect();
+  const startTime = Date.now();
 
   try {
+    console.log('Registration request received:', { email: req.body.email });
+
     // ✨ Validate request body
     const { error, value } = registerSchema.validate(req.body);
     if (error) {
+      console.log('Validation failed:', error.details.map(d => d.message));
       return res.status(400).json({
         error: "Invalid input",
         details: error.details.map(d => d.message)
@@ -49,25 +76,32 @@ app.post('/api/auth/register', async (req, res) => {
     const { email, password, firstName, lastName } = value;
 
     // Check if user already exists
+    console.log('Checking if user exists...');
     const existingUser = await client.query(
       'SELECT id FROM users WHERE email = $1 LIMIT 1',
       [email]
     );
 
     if (existingUser.rowCount > 0) {
+      console.log('User already exists');
       return res.status(409).json({ error: 'User already exists' });
     }
 
-    // Secure password hashing
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // Secure password hashing with lower cost for faster response
+    console.log('Hashing password...');
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
+    console.log('Inserting user into database...');
     const result = await client.query(
       `INSERT INTO users (email, password, first_name, last_name)
        VALUES ($1, $2, $3, $4)
        RETURNING id, email, first_name, last_name`,
       [email, hashedPassword, firstName, lastName]
     );
+
+    const duration = Date.now() - startTime;
+    console.log(`Registration successful in ${duration}ms for user:`, result.rows[0].id);
 
     return res.status(201).json({
       message: 'User registered successfully',
@@ -80,7 +114,8 @@ app.post('/api/auth/register', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Register Error:', err);
+    const duration = Date.now() - startTime;
+    console.error(`Register Error after ${duration}ms:`, err.message);
 
     // 🤖 Handle common DB errors
     if (err.code === 'ECONNREFUSED') {
@@ -91,7 +126,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error', details: err.message });
   } finally {
     client.release();
   }
@@ -286,7 +321,7 @@ app.put('/api/auth/profile', async (req, res) => {
             }
 
       const { firstName, lastName } = req.body;
-      
+
       const updates = [];
       const values = [];
       let paramCount = 1;
@@ -305,9 +340,9 @@ app.put('/api/auth/profile', async (req, res) => {
       }
 
       values.push(decoded.userId);
-      
+
       await client.query(
-        `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+        `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
          WHERE id = $${paramCount}`,
         values
       );
@@ -324,10 +359,10 @@ app.put('/api/auth/profile', async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     service: 'auth-service',
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString()
   });
 });
 
