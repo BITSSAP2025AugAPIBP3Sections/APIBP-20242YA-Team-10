@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing - Streamify</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">🎬 Streamify</div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="videos.html" class="nav-link">Videos</a>
+                <a href="streaming.html" class="nav-link">Streaming</a>
+                <a href="billing.html" class="nav-link active">Billing</a>
+                <a href="analytics.html" class="nav-link">Analytics</a>
+            </div>
+            <div id="navUserInfo"></div>
+        </nav>
+
+        <div id="message"></div>
+
+        <!-- Billing Service -->
+        <div class="card">
+            <div class="card-header">
+                <h2>💳 Billing Service</h2>
+            </div>
+            <div class="card-body">
+                <p>Manage your account balance and deposits. Your balance is deducted automatically when streaming videos.</p>
+            </div>
+        </div>
+
+        <!-- Current Balance -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Current Balance</h2>
+            </div>
+            <div class="card-body text-center">
+                <div class="stat-card" style="display: inline-block; min-width: 300px;">
+                    <h3 id="currentBalance">$0.00</h3>
+                    <p>Available Balance</p>
+                </div>
+                <div class="mt-3">
+                    <button onclick="showDepositModal()" class="btn btn-success">💰 Add Funds</button>
+                    <button onclick="loadBalance()" class="btn btn-primary">🔄 Refresh</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Deposit Options -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Quick Deposit</h2>
+            </div>
+            <div class="card-body">
+                <div class="grid grid-4">
+                    <button onclick="quickDeposit(500)" class="video-card" style="cursor: pointer; text-align: center;">
+                        <h3>$5.00</h3>
+                        <p>Quick Add</p>
+                    </button>
+                    <button onclick="quickDeposit(1000)" class="video-card" style="cursor: pointer; text-align: center;">
+                        <h3>$10.00</h3>
+                        <p>Quick Add</p>
+                    </button>
+                    <button onclick="quickDeposit(2000)" class="video-card" style="cursor: pointer; text-align: center;">
+                        <h3>$20.00</h3>
+                        <p>Quick Add</p>
+                    </button>
+                    <button onclick="quickDeposit(5000)" class="video-card" style="cursor: pointer; text-align: center;">
+                        <h3>$50.00</h3>
+                        <p>Quick Add</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billing Information -->
+        <div class="card">
+            <div class="card-header">
+                <h2>ℹ️ Billing Information</h2>
+            </div>
+            <div class="card-body">
+                <h3>How it works:</h3>
+                <ul style="line-height: 2;">
+                    <li>💵 Add funds to your account balance</li>
+                    <li>📺 Watch videos with pay-per-minute pricing</li>
+                    <li>⏱️ Your balance is deducted in real-time based on watch time</li>
+                    <li>💳 Prices vary by video (typically 10¢ per minute)</li>
+                    <li>✅ No hidden fees or subscriptions</li>
+                </ul>
+
+                <h3 class="mt-3">Pricing Examples:</h3>
+                <table class="table mt-2">
+                    <thead>
+                        <tr>
+                            <th>Watch Time</th>
+                            <th>Price (@ 10¢/min)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>5 minutes</td>
+                            <td>$0.50</td>
+                        </tr>
+                        <tr>
+                            <td>10 minutes</td>
+                            <td>$1.00</td>
+                        </tr>
+                        <tr>
+                            <td>30 minutes</td>
+                            <td>$3.00</td>
+                        </tr>
+                        <tr>
+                            <td>1 hour</td>
+                            <td>$6.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Deposit Modal -->
+        <div id="depositModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>💰 Add Funds</h2>
+                    <button class="modal-close" onclick="closeDepositModal()">&times;</button>
+                </div>
+                <form onsubmit="handleDeposit(event)">
+                    <div class="form-group">
+                        <label for="depositAmountUSD">Amount (USD)</label>
+                        <input type="number" id="depositAmountUSD" step="0.01" min="0.01" placeholder="Enter amount in dollars (e.g., 10.00)" required>
+                        <small style="color: #666;">Example: $10.00 will be added to your account</small>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-success">Deposit</button>
+                        <button type="button" onclick="closeDepositModal()" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        // Initialize page
+        initPage('billing.html', true);
+
+        // Load balance on page load
+        loadBalance();
+
+        // Load balance
+        async function loadBalance() {
+            const result = await apiRequest('/api/billing/balance', {
+                method: 'GET'
+            });
+
+            if (result.success) {
+                document.getElementById('currentBalance').textContent = formatCurrency(result.data.balance);
+            } else {
+                showMessage('Error loading balance', 'error');
+            }
+        }
+
+        // Show deposit modal
+        function showDepositModal() {
+            document.getElementById('depositModal').classList.add('active');
+        }
+
+        // Close deposit modal
+        function closeDepositModal() {
+            document.getElementById('depositModal').classList.remove('active');
+            document.getElementById('depositAmountUSD').value = '';
+        }
+
+        // Handle deposit
+        async function handleDeposit(event) {
+            event.preventDefault();
+
+            const usdAmount = parseFloat(document.getElementById('depositAmountUSD').value);
+
+            if (!usdAmount || usdAmount <= 0) {
+                showMessage('Please enter a valid amount', 'error');
+                return;
+            }
+
+            // Convert USD to cents for backend
+            const amount = Math.round(usdAmount * 100);
+
+            const result = await apiRequest('/api/billing/deposit', {
+                method: 'POST',
+                body: JSON.stringify({ amount })
+            });
+
+            if (result.success) {
+                showMessage(`Deposit successful! New balance: ${formatCurrency(result.data.newBalance)}`, 'success');
+                closeDepositModal();
+                loadBalance();
+            } else {
+                showMessage(result.error || 'Deposit failed', 'error');
+            }
+        }
+
+        // Quick deposit
+        async function quickDeposit(amount) {
+            if (!confirm(`Add ${formatCurrency(amount)} to your account?`)) {
+                return;
+            }
+
+            const result = await apiRequest('/api/billing/deposit', {
+                method: 'POST',
+                body: JSON.stringify({ amount })
+            });
+
+            if (result.success) {
+                showMessage(`Deposit successful! New balance: ${formatCurrency(result.data.newBalance)}`, 'success');
+                loadBalance();
+            } else {
+                showMessage(result.error || 'Deposit failed', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

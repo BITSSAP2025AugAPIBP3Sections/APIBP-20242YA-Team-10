@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streamify - Redirecting...</title>
+    <script>
+        // Redirect to appropriate page based on authentication status
+        async function checkAuthAndRedirect() {
+            const token = localStorage.getItem('authToken');
+
+            if (!token) {
+                // No token, go to login
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Verify token is valid before redirecting to dashboard
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    // Valid token, go to dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    // Invalid token, clear it and go to login
+                    localStorage.removeItem('authToken');
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                // Network error or invalid token, clear it and go to login
+                localStorage.removeItem('authToken');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Check authentication status when page loads
+        checkAuthAndRedirect();
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+        }
+        .loading h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <h1>🎬 Streamify</h1>
+        <p>Checking authentication...</p>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+
+        // Check if user is logged in on page load
+        if (authToken) {
+            verifyToken();
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.auth-section, .video-section, .analytics-section').forEach(s => {
+                s.classList.remove('active');
+            });
+
+            // Remove active class from nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(section + 'Section').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showAuthForm(type) {
+            document.getElementById('registerForm').style.display = type === 'register' ? 'block' : 'none';
+            document.getElementById('loginForm').style.display = type === 'login' ? 'block' : 'none';
+        }
+
+        async function register() {
+            const data = {
+                firstName: document.getElementById('regFirstName').value,
+                lastName: document.getElementById('regLastName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage('Registration successful! Please login.', 'success');
+                    showAuthForm('login');
+                } else {
+                    showMessage(result.error || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function login() {
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    authToken = result.token;
+                    localStorage.setItem('authToken', authToken);
+                    await verifyToken();
+                    showMessage('Login successful!', 'success');
+                } else {
+                    showMessage(result.error || 'Login failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function verifyToken() {
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('userInfo').style.display = 'block';
+                    document.getElementById('userDetails').innerHTML = `
+                        <strong>Welcome, ${currentUser.firstName} ${currentUser.lastName}!</strong><br>
+                        <small>${currentUser.email}</small>
+                    `;
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                logout();
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            document.getElementById('userInfo').style.display = 'none';
+            showMessage('Logged out successfully', 'success');
+        }
+
+        function showUploadForm() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+            document.getElementById('uploadForm').style.display = 'block';
+        }
+
+        function hideUploadForm() {
+            document.getElementById('uploadForm').style.display = 'none';
+        }
+
+        async function uploadVideo() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('videoTitle').value);
+            formData.append('description', document.getElementById('videoDescription').value);
+            formData.append('category', document.getElementById('videoCategory').value);
+            formData.append('pricePerMinute', document.getElementById('pricePerMinute').value);
+            formData.append('videoFile', document.getElementById('videoFile').files[0]);
+
+            try {
+                const response = await fetch('/api/videos', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage('Video uploaded successfully!', 'success');
+                    hideUploadForm();
+                    loadVideos();
+                } else {
+                    showMessage(result.error || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function loadVideos() {
+            try {
+                const response = await fetch('/api/videos');
+                const videos = await response.json();
+
+                const container = document.getElementById('videosContainer');
+                if (videos.length === 0) {
+                    container.innerHTML = '<p>No videos found. Upload some videos to get started!</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <h3>Available Videos</h3>
+                    <div class="video-grid">
+                        ${videos.map(video => `
+                            <div class="video-card">
+                                <h4>${video.title}</h4>
+                                <p><strong>Description:</strong> ${video.description || 'No description'}</p>
+                                <p><strong>Duration:</strong> ${Math.floor(video.duration / 60)}:${(video.duration % 60).toString().padStart(2, '0')}</p>
+                                <p><strong>Price:</strong> ${video.pricePerMinute}¢/min</p>
+                                <p><strong>Category:</strong> ${video.category}</p>
+                                ${authToken ? `<button class="btn" onclick="startStream('${video._id}')">Watch</button>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                showMessage('Failed to load videos', 'error');
+            }
+        }
+
+        async function startStream(videoId) {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stream/start/${videoId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage(`Stream started! Session ID: ${result.sessionId}`, 'success');
+                    // In a real app, you would redirect to a video player
+                    window.open(result.streamUrl, '_blank');
+                } else {
+                    showMessage(result.error || 'Failed to start stream', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function checkBalance() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/billing/balance', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage(`Your balance: ${result.balance}¢ (${(result.balance / 100).toFixed(2)} USD)`, 'success');
+                } else {
+                    showMessage(result.error || 'Failed to get balance', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function depositFunds() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            const amount = prompt('Enter amount to deposit in cents (e.g., 1000 for $10):');
+            if (!amount || isNaN(amount) || parseInt(amount) <= 0) {
+                showMessage('Invalid amount', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/billing/deposit', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount: parseInt(amount) })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage(`Deposit successful! New balance: ${result.newBalance}¢`, 'success');
+                } else {
+                    showMessage(result.error || 'Deposit failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error occurred', 'error');
+            }
+        }
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/api/analytics/dashboard');
+                const analytics = await response.json();
+
+                document.getElementById('analyticsContainer').innerHTML = `
+                    <div class="analytics-grid">
+                        <div class="stat-card">
+                            <h3>${analytics.totalUsers}</h3>
+                            <p>Total Users</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${analytics.totalViews}</h3>
+                            <p>Total Views</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${(analytics.totalRevenue / 100).toFixed(2)}</h3>
+                            <p>Revenue (USD)</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${Math.floor(analytics.totalWatchTime / 60)}</h3>
+                            <p>Watch Time (min)</p>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                showMessage('Failed to load analytics', 'error');
+            }
+        }
+
+        async function loadUserActivity() {
+            if (!authToken) {
+                showMessage('Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/analytics/user', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const activity = await response.json();
+
+                document.getElementById('analyticsContainer').innerHTML = `
+                    <h3>Your Activity</h3>
+                    <div class="analytics-grid">
+                        <div class="stat-card">
+                            <h3>${Math.floor(activity.totalWatchTime / 60)}</h3>
+                            <p>Total Watch Time (min)</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${(activity.totalSpent / 100).toFixed(2)}</h3>
+                            <p>Total Spent (USD)</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${activity.history.length}</h3>
+                            <p>Viewing Sessions</p>
+                        </div>
+                    </div>
+
+                    <h4>Recent Sessions:</h4>
+                    <div class="video-grid">
+                        ${activity.history.map(session => `
+                            <div class="video-card">
+                                <p><strong>Session:</strong> ${session.sessionId}</p>
+                                <p><strong>Video ID:</strong> ${session.videoId}</p>
+                                <p><strong>Watch Time:</strong> ${Math.floor(session.watchedTime / 60)}:${(session.watchedTime % 60).toString().padStart(2, '0')}</p>
+                                <p><strong>Started:</strong> ${new Date(session.startTime).toLocaleString()}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                showMessage('Failed to load user activity', 'error');
+            }
+        }
+
+        // Load videos on page load
+        loadVideos();
+    </script>
+</body>
+</html>

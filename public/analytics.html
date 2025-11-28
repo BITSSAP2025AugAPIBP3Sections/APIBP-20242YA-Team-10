@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Streamify</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">🎬 Streamify</div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="videos.html" class="nav-link">Videos</a>
+                <a href="streaming.html" class="nav-link">Streaming</a>
+                <a href="billing.html" class="nav-link">Billing</a>
+                <a href="analytics.html" class="nav-link active">Analytics</a>
+            </div>
+            <div id="navUserInfo"></div>
+        </nav>
+
+        <div id="message"></div>
+
+        <!-- Analytics Service -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📊 Analytics Service</h2>
+            </div>
+            <div class="card-body">
+                <div class="btn-group">
+                    <button onclick="loadDashboard()" class="btn btn-primary">Platform Dashboard</button>
+                    <button onclick="loadUserActivity()" class="btn btn-success">My Activity</button>
+                    <button onclick="loadTopVideos()" class="btn btn-secondary">Top Videos</button>
+                    <button onclick="loadRevenue()" class="btn btn-danger">Revenue Report</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Platform Dashboard -->
+        <div id="platformDashboard" class="card">
+            <div class="card-header">
+                <h2>Platform Analytics Dashboard</h2>
+            </div>
+            <div id="dashboardContent">
+                <p>Click "Platform Dashboard" to load analytics...</p>
+            </div>
+        </div>
+
+        <!-- User Activity -->
+        <div id="userActivitySection" class="card hidden">
+            <div class="card-header">
+                <h2>My Activity Report</h2>
+            </div>
+            <div id="userActivityContent">
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <!-- Top Videos -->
+        <div id="topVideosSection" class="card hidden">
+            <div class="card-header">
+                <h2>Top Performing Videos</h2>
+            </div>
+            <div id="topVideosContent">
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <!-- Revenue Report -->
+        <div id="revenueSection" class="card hidden">
+            <div class="card-header">
+                <h2>Revenue Analysis</h2>
+            </div>
+            <div id="revenueContent">
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <!-- Period Reports -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Reports by Period</h2>
+            </div>
+            <div class="card-body">
+                <div class="btn-group">
+                    <button onclick="loadPeriodReport('daily')" class="btn btn-primary">Daily</button>
+                    <button onclick="loadPeriodReport('weekly')" class="btn btn-success">Weekly</button>
+                    <button onclick="loadPeriodReport('monthly')" class="btn btn-secondary">Monthly</button>
+                </div>
+                <div id="periodReportContent" class="mt-3">
+                    <p>Select a period to view the report</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        // Initialize page
+        initPage('analytics.html', true);
+
+        // Load dashboard analytics
+        async function loadDashboard() {
+            showLoading('dashboardContent');
+            hideElement('userActivitySection');
+            hideElement('topVideosSection');
+            hideElement('revenueSection');
+            
+            const result = await apiRequest('/api/analytics/dashboard', {
+                method: 'GET',
+                requireAuth: false
+            });
+            
+            if (result.success) {
+                displayDashboard(result.data);
+            } else {
+                document.getElementById('dashboardContent').innerHTML = 
+                    `<p class="error">Error loading dashboard: ${result.error}</p>`;
+            }
+        }
+
+        // Display dashboard
+        function displayDashboard(data) {
+            document.getElementById('dashboardContent').innerHTML = `
+                <div class="grid grid-4">
+                    <div class="stat-card">
+                        <h3>${data.totalUsers}</h3>
+                        <p>Total Users</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.totalViews}</h3>
+                        <p>Total Views</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${formatCurrency(data.totalRevenue)}</h3>
+                        <p>Total Revenue</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${Math.floor(data.totalWatchTime / 60)}</h3>
+                        <p>Watch Time (min)</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load user activity
+        async function loadUserActivity() {
+            hideElement('platformDashboard');
+            hideElement('topVideosSection');
+            hideElement('revenueSection');
+            showElement('userActivitySection');
+            
+            showLoading('userActivityContent');
+            
+            const result = await apiRequest('/api/analytics/user', {
+                method: 'GET'
+            });
+            
+            if (result.success) {
+                displayUserActivity(result.data);
+            } else {
+                document.getElementById('userActivityContent').innerHTML = 
+                    `<p class="error">Error loading activity: ${result.error}</p>`;
+            }
+        }
+
+        // Display user activity
+        function displayUserActivity(data) {
+            document.getElementById('userActivityContent').innerHTML = `
+                <div class="grid grid-3 mb-3">
+                    <div class="stat-card">
+                        <h3>${Math.floor(data.totalWatchTime / 60)}</h3>
+                        <p>Total Watch Time (min)</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${formatCurrency(data.totalSpent)}</h3>
+                        <p>Total Spent</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.history.length}</h3>
+                        <p>Viewing Sessions</p>
+                    </div>
+                </div>
+                
+                <h3>Recent Sessions</h3>
+                ${data.history.length === 0 ? 
+                    '<p>No viewing history yet. Start watching videos!</p>' :
+                    `<div class="grid grid-2">
+                        ${data.history.slice(-10).reverse().map(session => `
+                            <div class="video-card">
+                                <p><strong>Session:</strong> ${session.sessionId}</p>
+                                <p><strong>Video ID:</strong> ${session.videoId}</p>
+                                <p><strong>Watch Time:</strong> ${formatDuration(session.watchedTime)}</p>
+                                <p><strong>Started:</strong> ${formatDate(session.startTime)}</p>
+                            </div>
+                        `).join('')}
+                    </div>`
+                }
+            `;
+        }
+
+        // Load top videos
+        async function loadTopVideos() {
+            hideElement('platformDashboard');
+            hideElement('userActivitySection');
+            hideElement('revenueSection');
+            showElement('topVideosSection');
+            
+            showLoading('topVideosContent');
+            
+            const result = await apiRequest('/api/analytics/top-videos', {
+                method: 'GET',
+                requireAuth: false
+            });
+            
+            if (result.success) {
+                displayTopVideos(result.data);
+            } else {
+                document.getElementById('topVideosContent').innerHTML = 
+                    `<p class="error">Error loading top videos: ${result.error}</p>`;
+            }
+        }
+
+        // Display top videos
+        function displayTopVideos(videos) {
+            if (videos.length === 0) {
+                document.getElementById('topVideosContent').innerHTML = 
+                    '<p>No video analytics available yet.</p>';
+                return;
+            }
+            
+            document.getElementById('topVideosContent').innerHTML = `
+                <div class="grid grid-2">
+                    ${videos.map((video, index) => `
+                        <div class="video-card">
+                            <h3>#${index + 1} Video ID: ${video.videoId}</h3>
+                            <p><strong>Total Views:</strong> ${video.totalViews}</p>
+                            <p><strong>Watch Time:</strong> ${formatDuration(video.totalWatchTime)}</p>
+                            <p><strong>Revenue:</strong> ${formatCurrency(video.totalRevenue)}</p>
+                            <p><strong>Completion Rate:</strong> ${(video.completionRate * 100).toFixed(1)}%</p>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Load revenue
+        async function loadRevenue() {
+            hideElement('platformDashboard');
+            hideElement('userActivitySection');
+            hideElement('topVideosSection');
+            showElement('revenueSection');
+            
+            showLoading('revenueContent');
+            
+            const result = await apiRequest('/api/analytics/revenue', {
+                method: 'GET',
+                requireAuth: false
+            });
+            
+            if (result.success) {
+                displayRevenue(result.data);
+            } else {
+                document.getElementById('revenueContent').innerHTML = 
+                    `<p class="error">Error loading revenue: ${result.error}</p>`;
+            }
+        }
+
+        // Display revenue
+        function displayRevenue(data) {
+            document.getElementById('revenueContent').innerHTML = `
+                <div class="grid grid-3">
+                    <div class="stat-card">
+                        <h3>${formatCurrency(data.daily)}</h3>
+                        <p>Daily Revenue</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${formatCurrency(data.weekly)}</h3>
+                        <p>Weekly Revenue</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${formatCurrency(data.monthly)}</h3>
+                        <p>Monthly Revenue</p>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h3>Revenue Breakdown</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Revenue</th>
+                                <th>% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Daily</td>
+                                <td>${formatCurrency(data.daily)}</td>
+                                <td>${((data.daily / data.monthly) * 100).toFixed(1)}%</td>
+                            </tr>
+                            <tr>
+                                <td>Weekly</td>
+                                <td>${formatCurrency(data.weekly)}</td>
+                                <td>${((data.weekly / data.monthly) * 100).toFixed(1)}%</td>
+                            </tr>
+                            <tr>
+                                <td>Monthly</td>
+                                <td>${formatCurrency(data.monthly)}</td>
+                                <td>100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Load period report
+        async function loadPeriodReport(period) {
+            showLoading('periodReportContent');
+            
+            const result = await apiRequest(`/api/analytics/reports/${period}`, {
+                method: 'GET',
+                requireAuth: false
+            });
+            
+            if (result.success) {
+                displayPeriodReport(result.data, period);
+            } else {
+                document.getElementById('periodReportContent').innerHTML = 
+                    `<p class="error">Error loading report: ${result.error}</p>`;
+            }
+        }
+
+        // Display period report
+        function displayPeriodReport(data, period) {
+            const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
+            
+            document.getElementById('periodReportContent').innerHTML = `
+                <h3>${periodLabel} Report</h3>
+                <div class="grid grid-4 mt-2">
+                    <div class="stat-card">
+                        <h3>${data.totalUsers}</h3>
+                        <p>Users</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${data.totalViews}</h3>
+                        <p>Views</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${formatCurrency(data.totalRevenue)}</h3>
+                        <p>Revenue</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${Math.floor(data.totalWatchTime / 60)}</h3>
+                        <p>Watch Time (min)</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
