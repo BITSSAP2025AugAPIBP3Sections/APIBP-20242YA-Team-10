@@ -284,7 +284,7 @@ curl -X POST http://localhost:3000/api/saga/register \
 **Tables**:
 - **Event Store**: `analytics_events` (immutable)
 - **Write Model**: `video_views` (normalized)
-- **Read Models**: 
+- **Read Models**:
   - `video_stats_read_model` (denormalized)
   - `user_viewing_history_read_model` (denormalized)
   - `unique_viewers` (denormalized)
