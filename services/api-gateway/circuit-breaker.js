@@ -85,7 +85,7 @@ function initializeCircuitBreakers(serviceUrls) {
 // Get circuit breaker stats
 function getCircuitBreakerStats() {
   const stats = {};
-  
+
   Object.keys(breakers).forEach(service => {
     if (breakers[service]) {
       const breaker = breakers[service];
