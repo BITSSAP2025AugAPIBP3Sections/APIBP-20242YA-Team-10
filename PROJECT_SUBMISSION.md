@@ -1,9 +1,9 @@
 # Streamify - Complete Microservices Implementation
 ## Project Submission Document
 
-**Course**: Microservices Architecture  
-**Team**: Team 10  
-**Date**: November 29, 2024  
+**Course**: Microservices Architecture
+**Team**: Team 10
+**Date**: November 29, 2024
 **Institution**: BITS Pilani
 
 ---
@@ -63,7 +63,7 @@ We implemented **6 microservices**, each with distinct responsibilities:
 #### ✅ 2. gRPC
 - **Implementation**: Auth service exposes gRPC server (port 50051)
 - **Proto File**: `proto/auth.proto`
-- **Services**: 
+- **Services**:
   - `VerifyToken`: Validate JWT tokens
   - `GetUserProfile`: Fetch user details
   - `HealthCheck`: Service health
@@ -88,7 +88,7 @@ We implemented **6 microservices**, each with distinct responsibilities:
     videoStats(videoId: Int!): ViewStats
     userBalance: UserBalance
   }
-  
+
   type Mutation {
     addFunds(amount: Int!): UserBalance
     startStream(videoId: Int!): StreamSession
@@ -97,7 +97,7 @@ We implemented **6 microservices**, each with distinct responsibilities:
 
 #### ✅ 4. Message Broker (RabbitMQ)
 - **Implementation**: RabbitMQ for asynchronous event-driven communication
-- **Exchanges**: 
+- **Exchanges**:
   - `streamify.events` (topic): User, video, payment events
   - `streamify.analytics` (fanout): Analytics events
 - **Event Types**:
@@ -311,7 +311,7 @@ curl -X POST http://localhost:3000/api/saga/register \
 - **Process**: Command → Event → Write Model → Event Store → Update Read Model
 
 #### Query Side (Read)
-- **Denormalized Storage**: 
+- **Denormalized Storage**:
   - `video_stats_read_model`
   - `user_viewing_history_read_model`
   - `unique_viewers`
@@ -494,7 +494,7 @@ minikube service api-gateway-service
 
 ### How Patterns Improve Scalability
 
-1. **API Gateway**: 
+1. **API Gateway**:
    - Single entry point reduces client complexity
    - Rate limiting prevents abuse
    - Can scale horizontally behind load balancer
@@ -563,11 +563,11 @@ minikube service api-gateway-service
 
 Streamify demonstrates a **complete microservices implementation** with:
 
-✅ **6 independent microservices** with clear boundaries  
-✅ **4 communication mechanisms** (REST, gRPC, GraphQL, RabbitMQ)  
-✅ **5+ design patterns** for scalability and resilience  
-✅ **Complete containerization** and orchestration  
-✅ **Comprehensive testing** and documentation  
+✅ **6 independent microservices** with clear boundaries
+✅ **4 communication mechanisms** (REST, gRPC, GraphQL, RabbitMQ)
+✅ **5+ design patterns** for scalability and resilience
+✅ **Complete containerization** and orchestration
+✅ **Comprehensive testing** and documentation
 
 The system is **production-ready**, **highly scalable**, and demonstrates **industry best practices** in microservices architecture.
 
