@@ -347,9 +347,9 @@ app.post('/api/analytics/profile/create', async (req, res) => {
       [userId]
     );
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Analytics profile created successfully',
-      userId 
+      userId
     });
   } catch (error) {
     console.error('Create analytics profile error:', error);
