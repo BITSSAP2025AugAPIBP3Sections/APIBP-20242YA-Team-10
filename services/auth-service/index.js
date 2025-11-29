@@ -376,9 +376,9 @@ app.delete('/api/auth/users/:userId', async (req, res) => {
 
     await client.query('DELETE FROM users WHERE id = $1', [userId]);
 
-    res.json({ 
+    res.json({
       message: 'User deleted successfully (compensation)',
-      userId 
+      userId
     });
   } catch (error) {
     console.error('Delete user error:', error);
@@ -403,7 +403,7 @@ initDB()
     app.listen(PORT, () => {
       console.log(`✅ Auth Service REST API running on port ${PORT}`);
     });
-    
+
     // Start gRPC server
     startGrpcServer();
   })
