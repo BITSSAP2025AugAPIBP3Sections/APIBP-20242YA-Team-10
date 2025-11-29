@@ -2,14 +2,21 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy proto files from root
+COPY proto ./proto
+
+# Copy shared directory
+COPY services/shared ./shared
+
 # Copy package files
-COPY package*.json ./
+COPY services/api-gateway/package*.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy application code including public folder
-COPY . .
+COPY services/api-gateway/ .
+COPY public ./public
 
 # Expose port
 EXPOSE 3000
