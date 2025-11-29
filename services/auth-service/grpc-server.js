@@ -10,7 +10,7 @@ const GRPC_PORT = process.env.GRPC_PORT || 50051;
 // Load proto file
 // In container: proto files are at /app/proto, __dirname is /app
 // In development: proto files are at ../../proto relative to this file
-const PROTO_PATH = process.env.NODE_ENV === 'production' 
+const PROTO_PATH = process.env.NODE_ENV === 'production'
   ? path.join(__dirname, './proto/auth.proto')
   : path.join(__dirname, '../../proto/auth.proto');
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
