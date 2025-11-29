@@ -5,10 +5,10 @@ package auth;
 service AuthService {
   // Verify JWT token and return user information
   rpc VerifyToken (VerifyTokenRequest) returns (VerifyTokenResponse);
-  
+
   // Get user profile by user ID (for inter-service communication)
   rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
-  
+
   // Health check
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
 }
