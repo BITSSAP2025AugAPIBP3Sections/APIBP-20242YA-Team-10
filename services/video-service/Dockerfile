@@ -2,14 +2,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy proto files from root
+COPY proto ./proto
+
 # Copy package files
-COPY package*.json ./
+COPY services/video-service/package*.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy application code
-COPY . .
+COPY services/video-service/ .
 
 # Create uploads directory
 RUN mkdir -p /app/uploads/videos
