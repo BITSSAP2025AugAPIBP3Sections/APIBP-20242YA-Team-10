@@ -26,10 +26,10 @@
 
 Streamify is a production-ready video streaming platform built with **microservices architecture**, demonstrating industry-standard patterns and practices. This project implements:
 
-✅ **6 Microservices** (Auth, Video, Streaming, Billing, Analytics, API Gateway)  
-✅ **4 Communication Mechanisms** (REST, gRPC, GraphQL, Message Broker)  
-✅ **5+ Design Patterns** (API Gateway, Circuit Breaker, Saga, CQRS, Database-per-Service)  
-✅ **Complete Deployment** (Docker, Kubernetes, Minikube)  
+✅ **6 Microservices** (Auth, Video, Streaming, Billing, Analytics, API Gateway)
+✅ **4 Communication Mechanisms** (REST, gRPC, GraphQL, Message Broker)
+✅ **5+ Design Patterns** (API Gateway, Circuit Breaker, Saga, CQRS, Database-per-Service)
+✅ **Complete Deployment** (Docker, Kubernetes, Minikube)
 ✅ **Comprehensive Documentation** (OpenAPI, Proto files, Architecture diagrams)
 
 ---
@@ -147,8 +147,8 @@ curl -X POST http://localhost:3000/api/auth/register \
 ### 2. gRPC ✅
 **Auth Service** exposes gRPC for high-performance inter-service communication.
 
-**Proto**: `proto/auth.proto`  
-**Port**: 50051  
+**Proto**: `proto/auth.proto`
+**Port**: 50051
 **Services**: VerifyToken, GetUserProfile, HealthCheck
 
 ```bash
@@ -222,7 +222,7 @@ curl -X POST http://localhost:3000/api/saga/register \
   -d '{"email":"saga@test.com","password":"pass123","firstName":"Saga","lastName":"Test"}'
 ```
 
-**Flow**: Create User → Create Wallet → Create Analytics Profile  
+**Flow**: Create User → Create Wallet → Create Analytics Profile
 **Compensation**: Rollback on failure
 
 ### Pattern 5: CQRS with Event Sourcing ✅
@@ -340,23 +340,23 @@ open http://localhost:15672
 ## 🎓 Academic Alignment
 
 ### Sub-Objective 1: Service Design (8 Marks)
-✅ **6 Microservices** with clear boundaries  
-✅ **Business Capability** decomposition  
-✅ **4 Communication Mechanisms** (REST, gRPC, GraphQL, RabbitMQ)  
-✅ **Complete API Schemas** (OpenAPI, Proto files)  
+✅ **6 Microservices** with clear boundaries
+✅ **Business Capability** decomposition
+✅ **4 Communication Mechanisms** (REST, gRPC, GraphQL, RabbitMQ)
+✅ **Complete API Schemas** (OpenAPI, Proto files)
 ✅ **Architecture Diagrams** included
 
 ### Sub-Objective 2: Patterns & Reliability (4 Marks)
-✅ **API Gateway** - Single entry point  
-✅ **Database-per-Service** - Service independence  
-✅ **Circuit Breaker** - Fault tolerance  
-✅ **Saga Pattern** - Distributed transactions  
+✅ **API Gateway** - Single entry point
+✅ **Database-per-Service** - Service independence
+✅ **Circuit Breaker** - Fault tolerance
+✅ **Saga Pattern** - Distributed transactions
 ✅ **CQRS** - Command-query separation
 
 ### Sub-Objective 3: Deployment (3 Marks)
-✅ **All services containerized** (Dockerfile for each)  
-✅ **Kubernetes manifests** (Deployments, Services, ConfigMaps)  
-✅ **DockerHub ready** (build-and-push.sh script)  
+✅ **All services containerized** (Dockerfile for each)
+✅ **Kubernetes manifests** (Deployments, Services, ConfigMaps)
+✅ **DockerHub ready** (build-and-push.sh script)
 ✅ **Minikube deployment** tested
 
 ---
