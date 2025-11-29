@@ -160,7 +160,7 @@ declare -a service_names=("Auth" "Video" "Streaming" "Billing" "Analytics")
 for i in "${!services[@]}"; do
     port="${services[$i]}"
     name="${service_names[$i]}"
-    
+
     if curl -s "http://localhost:$port/health" | grep -q "OK"; then
         echo -e "${GREEN}  ✓ $name Service (Port $port) - Healthy${NC}"
     else
