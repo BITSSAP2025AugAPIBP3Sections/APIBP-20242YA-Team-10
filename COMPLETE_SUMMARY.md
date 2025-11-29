@@ -431,6 +431,6 @@ All requirements implemented:
 
 ---
 
-**Last Updated**: November 29, 2024  
-**Team**: Team 10  
+**Last Updated**: November 29, 2024
+**Team**: Team 10
 **Status**: ✅ COMPLETE
