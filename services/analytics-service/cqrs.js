@@ -1,11 +1,11 @@
 /**
  * CQRS Pattern Implementation for Analytics Service
- * 
+ *
  * Separates Command (Write) operations from Query (Read) operations
- * 
+ *
  * Command Side: Handles writes and emits events
  * Query Side: Handles reads from optimized read models
- * 
+ *
  * Event Store: Stores all events for event sourcing
  */
 
@@ -29,7 +29,7 @@ class AnalyticsCQRS {
 
       // 1. Create event in event store
       const eventResult = await client.query(
-        `INSERT INTO analytics_events 
+        `INSERT INTO analytics_events
          (event_type, aggregate_id, aggregate_type, user_id, video_id, event_data, occurred_at)
          VALUES ($1, $2, $3, $4, $5, $6, NOW())
          RETURNING id, occurred_at`,
@@ -79,8 +79,8 @@ class AnalyticsCQRS {
     await client.query(
       `INSERT INTO video_stats_read_model (video_id, total_views, unique_viewers, total_watch_time, last_updated)
        VALUES ($1, 1, 1, $2, NOW())
-       ON CONFLICT (video_id) 
-       DO UPDATE SET 
+       ON CONFLICT (video_id)
+       DO UPDATE SET
          total_views = video_stats_read_model.total_views + 1,
          total_watch_time = video_stats_read_model.total_watch_time + $2,
          last_updated = NOW()`,
@@ -117,7 +117,7 @@ class AnalyticsCQRS {
   async getVideoStats(videoId) {
     try {
       const result = await this.pool.query(
-        `SELECT 
+        `SELECT
            vs.video_id,
            vs.total_views,
            vs.total_watch_time,
@@ -144,7 +144,7 @@ class AnalyticsCQRS {
         totalViews: parseInt(stats.total_views),
         uniqueViewers: parseInt(stats.unique_viewers),
         totalWatchTime: parseInt(stats.total_watch_time),
-        averageWatchTime: stats.total_views > 0 
+        averageWatchTime: stats.total_views > 0
           ? parseFloat((stats.total_watch_time / stats.total_views).toFixed(2))
           : 0,
         lastUpdated: stats.last_updated
@@ -161,7 +161,7 @@ class AnalyticsCQRS {
   async getUserViewingHistory(userId) {
     try {
       const result = await this.pool.query(
-        `SELECT 
+        `SELECT
            user_id,
            videos_watched,
            total_time_spent,
@@ -197,7 +197,7 @@ class AnalyticsCQRS {
   async getPlatformStats() {
     try {
       const result = await this.pool.query(
-        `SELECT 
+        `SELECT
            COUNT(DISTINCT video_id) as total_videos_viewed,
            SUM(total_views) as total_views,
            SUM(total_watch_time) as total_watch_time,
@@ -237,7 +237,7 @@ class AnalyticsCQRS {
       const query = fromTimestamp
         ? 'SELECT * FROM analytics_events WHERE occurred_at >= $1 ORDER BY occurred_at ASC'
         : 'SELECT * FROM analytics_events ORDER BY occurred_at ASC';
-      
+
       const params = fromTimestamp ? [fromTimestamp] : [];
       const eventsResult = await client.query(query, params);
 
