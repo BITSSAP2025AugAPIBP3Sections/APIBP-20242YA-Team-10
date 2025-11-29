@@ -148,9 +148,9 @@ async function subscribeToQueue(queueName, handler) {
         try {
           const event = JSON.parse(msg.content.toString());
           console.log(`📥 Received event from ${queueName}:`, event.eventType || 'analytics');
-          
+
           await handler(event);
-          
+
           channel.ack(msg);
         } catch (error) {
           console.error('Error processing message:', error);
