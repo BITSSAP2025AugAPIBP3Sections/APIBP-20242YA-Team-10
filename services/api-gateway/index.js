@@ -61,10 +61,10 @@ app.post('/api/saga/register', async (req, res) => {
     }
   } catch (error) {
     console.error('Saga execution error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Saga execution failed', 
-      details: error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Saga execution failed',
+      details: error.message
     });
   }
 });
