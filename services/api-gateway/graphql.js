@@ -71,11 +71,11 @@ const typeDefs = `#graphql
     # Video queries
     videos(page: Int, limit: Int, category: String): VideosResponse
     video(id: Int!): Video
-    
+
     # Analytics queries
     videoStats(videoId: Int!): ViewStats
     platformStats: RevenueStats
-    
+
     # User queries
     userBalance: UserBalance
     activeStreams: [StreamSession!]!
@@ -84,7 +84,7 @@ const typeDefs = `#graphql
   type Mutation {
     # Billing mutations
     addFunds(amount: Int!): UserBalance
-    
+
     # Streaming mutations
     startStream(videoId: Int!): StreamSession
     endStream(sessionId: Int!): StreamSession
@@ -98,7 +98,7 @@ const resolvers = {
       try {
         const params = new URLSearchParams({ page, limit });
         if (category) params.append('category', category);
-        
+
         const response = await axios.get(`${VIDEO_SERVICE_URL}/api/videos?${params}`);
         return response.data;
       } catch (error) {
