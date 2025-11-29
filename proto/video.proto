@@ -5,10 +5,10 @@ package video;
 service VideoService {
   // Get video list with pagination
   rpc ListVideos (ListVideosRequest) returns (ListVideosResponse);
-  
+
   // Get video details by ID
   rpc GetVideo (GetVideoRequest) returns (GetVideoResponse);
-  
+
   // Health check
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
 }
