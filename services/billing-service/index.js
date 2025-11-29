@@ -267,6 +267,32 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ==================== SAGA PATTERN: COMPENSATION ENDPOINT ====================
+
+// Delete billing account (for Saga compensation)
+app.delete('/api/billing/account/:userId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = parseInt(req.params.userId);
+
+    // Delete transactions first (foreign key constraint)
+    await client.query('DELETE FROM transactions WHERE user_id = $1', [userId]);
+    
+    // Delete billing account
+    await client.query('DELETE FROM billing_accounts WHERE user_id = $1', [userId]);
+
+    res.json({ 
+      message: 'Billing account deleted successfully (compensation)',
+      userId 
+    });
+  } catch (error) {
+    console.error('Delete billing account error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error(error);
