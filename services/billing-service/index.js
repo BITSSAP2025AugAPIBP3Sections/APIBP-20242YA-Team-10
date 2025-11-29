@@ -221,9 +221,9 @@ app.get('/api/billing/transactions', authenticateToken, async (req, res) => {
     const { limit = 50, offset = 0 } = req.query;
 
     const result = await client.query(
-      `SELECT * FROM transactions 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
+      `SELECT * FROM transactions
+       WHERE user_id = $1
+       ORDER BY created_at DESC
        LIMIT $2 OFFSET $3`,
       [req.user.userId, limit, offset]
     );
@@ -242,8 +242,8 @@ app.get('/api/billing/revenue/total', async (req, res) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT SUM(ABS(amount)) as total_revenue 
-       FROM transactions 
+      `SELECT SUM(ABS(amount)) as total_revenue
+       FROM transactions
        WHERE transaction_type = 'charge'`
     );
 
@@ -265,6 +265,32 @@ app.get('/health', (req, res) => {
     service: 'billing-service',
     timestamp: new Date().toISOString()
   });
+});
+
+// ==================== SAGA PATTERN: COMPENSATION ENDPOINT ====================
+
+// Delete billing account (for Saga compensation)
+app.delete('/api/billing/account/:userId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = parseInt(req.params.userId);
+
+    // Delete transactions first (foreign key constraint)
+    await client.query('DELETE FROM transactions WHERE user_id = $1', [userId]);
+
+    // Delete billing account
+    await client.query('DELETE FROM billing_accounts WHERE user_id = $1', [userId]);
+
+    res.json({
+      message: 'Billing account deleted successfully (compensation)',
+      userId
+    });
+  } catch (error) {
+    console.error('Delete billing account error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
 });
 
 // Error handling middleware

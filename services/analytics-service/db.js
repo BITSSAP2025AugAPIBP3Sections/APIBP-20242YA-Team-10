@@ -11,6 +11,9 @@ const pool = new Pool({
 // Initialize database schema
 const initDB = async () => {
   const client = await pool.connect();
+  const fs = require('fs');
+  const path = require('path');
+
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS video_analytics (
@@ -49,6 +52,19 @@ const initDB = async () => {
       CREATE INDEX IF NOT EXISTS idx_user_activities_video_id ON user_activities(video_id);
       CREATE INDEX IF NOT EXISTS idx_platform_metrics_date ON platform_metrics(metric_date);
     `);
+
+    // Load and execute CQRS schema
+    try {
+      const cqrsSchemaPath = path.join(__dirname, 'cqrs-schema.sql');
+      if (fs.existsSync(cqrsSchemaPath)) {
+        const cqrsSchema = fs.readFileSync(cqrsSchemaPath, 'utf8');
+        await client.query(cqrsSchema);
+        console.log('✅ CQRS tables initialized successfully');
+      }
+    } catch (cqrsError) {
+      console.log('⚠️  CQRS schema file not found or error loading it');
+    }
+
     console.log('Analytics database initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);

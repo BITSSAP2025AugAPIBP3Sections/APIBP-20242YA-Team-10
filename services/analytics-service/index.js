@@ -320,6 +320,134 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ==================== SAGA PATTERN ENDPOINTS ====================
+
+// Create analytics profile (for Saga pattern)
+app.post('/api/analytics/profile/create', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    // Check if profile already exists
+    const existing = await client.query(
+      'SELECT user_id FROM analytics_profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.json({ message: 'Analytics profile already exists' });
+    }
+
+    await client.query(
+      'INSERT INTO analytics_profiles (user_id) VALUES ($1)',
+      [userId]
+    );
+
+    res.status(201).json({
+      message: 'Analytics profile created successfully',
+      userId
+    });
+  } catch (error) {
+    console.error('Create analytics profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// Delete analytics profile (for Saga compensation)
+app.delete('/api/analytics/profile/:userId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = parseInt(req.params.userId);
+
+    await client.query(
+      'DELETE FROM analytics_profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    res.json({ message: 'Analytics profile deleted successfully' });
+  } catch (error) {
+    console.error('Delete analytics profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// ==================== CQRS PATTERN ENDPOINTS ====================
+
+const { AnalyticsCQRS } = require('./cqrs');
+const cqrs = new AnalyticsCQRS(pool);
+
+// CQRS Command: Record view
+app.post('/api/analytics/cqrs/record-view', async (req, res) => {
+  try {
+    const { userId, videoId, watchTime } = req.body;
+
+    if (!userId || !videoId || !watchTime) {
+      return res.status(400).json({ error: 'userId, videoId, and watchTime required' });
+    }
+
+    const result = await cqrs.recordView(userId, videoId, watchTime);
+    res.json(result);
+  } catch (error) {
+    console.error('CQRS record view error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// CQRS Query: Get video stats
+app.get('/api/analytics/cqrs/video/:videoId/stats', async (req, res) => {
+  try {
+    const videoId = parseInt(req.params.videoId);
+    const stats = await cqrs.getVideoStats(videoId);
+    res.json(stats);
+  } catch (error) {
+    console.error('CQRS get video stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// CQRS Query: Get user viewing history
+app.get('/api/analytics/cqrs/user/:userId/history', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const history = await cqrs.getUserViewingHistory(userId);
+    res.json(history);
+  } catch (error) {
+    console.error('CQRS get user history error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// CQRS Query: Get platform stats
+app.get('/api/analytics/cqrs/platform/stats', async (req, res) => {
+  try {
+    const stats = await cqrs.getPlatformStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('CQRS get platform stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// CQRS: Replay events (admin only)
+app.post('/api/analytics/cqrs/replay-events', async (req, res) => {
+  try {
+    const { fromTimestamp } = req.body;
+    const result = await cqrs.replayEvents(fromTimestamp);
+    res.json(result);
+  } catch (error) {
+    console.error('CQRS replay events error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error(error);
@@ -330,7 +458,9 @@ app.use((error, req, res, next) => {
 initDB()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Analytics Service running on port ${PORT}`);
+      console.log(`✅ Analytics Service running on port ${PORT}`);
+      console.log(`   - CQRS Pattern: Enabled`);
+      console.log(`   - Saga Pattern: Enabled`);
     });
   })
   .catch(err => {

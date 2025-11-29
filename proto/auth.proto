@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  // Verify JWT token and return user information
+  rpc VerifyToken (VerifyTokenRequest) returns (VerifyTokenResponse);
+
+  // Get user profile by user ID (for inter-service communication)
+  rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
+
+  // Health check
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message VerifyTokenRequest {
+  string token = 1;
+}
+
+message VerifyTokenResponse {
+  bool valid = 1;
+  int32 user_id = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string error = 6;
+}
+
+message GetUserProfileRequest {
+  int32 user_id = 1;
+}
+
+message GetUserProfileResponse {
+  int32 id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string created_at = 5;
+  string error = 6;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  string service = 2;
+  string timestamp = 3;
+}

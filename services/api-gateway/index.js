@@ -26,10 +26,9 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// Parse JSON only for non-proxy routes (health checks, etc.)
-// DO NOT parse JSON for /api/* routes as proxy will handle it
+// Parse JSON for specific routes including saga
 app.use((req, res, next) => {
-  if (!req.path.startsWith('/api/')) {
+  if (!req.path.startsWith('/api/') || req.path.startsWith('/api/saga')) {
     express.json({ limit: '50mb' })(req, res, next);
   } else {
     next();
@@ -38,6 +37,37 @@ app.use((req, res, next) => {
 
 // Serve static files (frontend)
 app.use(express.static('public'));
+
+// ==================== SAGA PATTERN ENDPOINT ====================
+
+// In container: shared is at /app/shared, index.js is at /app/index.js, so use ./shared
+// In development: shared is at ../shared relative to this file
+const { RegistrationSaga } = require(process.env.NODE_ENV === 'production' ? './shared/registration-saga' : '../shared/registration-saga');
+
+app.post('/api/saga/register', async (req, res) => {
+  try {
+    const saga = new RegistrationSaga(
+      AUTH_SERVICE_URL,
+      BILLING_SERVICE_URL,
+      ANALYTICS_SERVICE_URL
+    );
+
+    const result = await saga.execute(req.body);
+
+    if (result.success) {
+      res.status(201).json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('Saga execution error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Saga execution failed',
+      details: error.message
+    });
+  }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -53,6 +83,14 @@ app.get('/health', (req, res) => {
       analytics: ANALYTICS_SERVICE_URL
     }
   });
+});
+
+// Circuit breaker stats endpoint
+const { getCircuitBreakerStats } = require('./circuit-breaker');
+
+app.get('/api/circuit-breaker/stats', (req, res) => {
+  const stats = getCircuitBreakerStats();
+  res.json(stats);
 });
 
 // Proxy configuration options with increased timeouts
@@ -142,21 +180,29 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
-  console.log(`API Gateway running on port ${PORT}`);
-  console.log(`Frontend: http://localhost:${PORT}`);
-  console.log(`API: http://localhost:${PORT}/api`);
-  console.log('\nMicroservices:');
-  console.log(`  - Auth Service: ${AUTH_SERVICE_URL}`);
-  console.log(`  - Video Service: ${VIDEO_SERVICE_URL}`);
-  console.log(`  - Streaming Service: ${STREAMING_SERVICE_URL}`);
-  console.log(`  - Billing Service: ${BILLING_SERVICE_URL}`);
-  console.log(`  - Analytics Service: ${ANALYTICS_SERVICE_URL}`);
+const http = require('http');
+const httpServer = http.createServer(app);
+
+// Setup GraphQL
+const { setupGraphQL } = require('./graphql');
+setupGraphQL(app, httpServer).then(() => {
+  httpServer.listen(PORT, () => {
+    console.log(`✅ API Gateway running on port ${PORT}`);
+    console.log(`   Frontend: http://localhost:${PORT}`);
+    console.log(`   REST API: http://localhost:${PORT}/api`);
+    console.log(`   GraphQL: http://localhost:${PORT}/graphql`);
+    console.log('\n📡 Microservices:');
+    console.log(`  - Auth Service: ${AUTH_SERVICE_URL}`);
+    console.log(`  - Video Service: ${VIDEO_SERVICE_URL}`);
+    console.log(`  - Streaming Service: ${STREAMING_SERVICE_URL}`);
+    console.log(`  - Billing Service: ${BILLING_SERVICE_URL}`);
+    console.log(`  - Analytics Service: ${ANALYTICS_SERVICE_URL}`);
+  });
 });
 
 // Set server timeouts
-server.timeout = 60000; // 60 seconds
-server.keepAliveTimeout = 65000; // 65 seconds (longer than timeout)
-server.headersTimeout = 66000; // 66 seconds (longer than keepAliveTimeout)
+httpServer.timeout = 60000; // 60 seconds
+httpServer.keepAliveTimeout = 65000; // 65 seconds (longer than timeout)
+httpServer.headersTimeout = 66000; // 66 seconds (longer than keepAliveTimeout)
 
 module.exports = app;

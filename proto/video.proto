@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package video;
+
+service VideoService {
+  // Get video list with pagination
+  rpc ListVideos (ListVideosRequest) returns (ListVideosResponse);
+
+  // Get video details by ID
+  rpc GetVideo (GetVideoRequest) returns (GetVideoResponse);
+
+  // Health check
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message ListVideosRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string category = 3;
+}
+
+message Video {
+  int32 id = 1;
+  string title = 2;
+  string description = 3;
+  string category = 4;
+  int32 duration = 5;
+  int32 price_per_minute = 6;
+  string filename = 7;
+  int32 uploaded_by = 8;
+  string created_at = 9;
+}
+
+message ListVideosResponse {
+  repeated Video videos = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+  string error = 5;
+}
+
+message GetVideoRequest {
+  int32 video_id = 1;
+}
+
+message GetVideoResponse {
+  Video video = 1;
+  string error = 2;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  string service = 2;
+  string timestamp = 3;
+}

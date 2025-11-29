@@ -90,18 +90,23 @@ services:
   # Microservices
   auth-service:
     build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
     container_name: streamify-auth-service
     ports:
       - "3001:3001"
+      - "50051:50051"  # gRPC port
     environment:
       PORT: 3001
+      GRPC_PORT: 50051
       JWT_SECRET: your-secret-key-change-in-production
       DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-auth:5432/streamify_auth
+      RABBITMQ_URL: amqp://streamify:streamify123@rabbitmq:5672
       NODE_ENV: production
     depends_on:
       postgres-auth:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - streamify-network
@@ -109,8 +114,8 @@ services:
 
   video-service:
     build:
-      context: ./services/video-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/video-service/Dockerfile
     container_name: streamify-video-service
     ports:
       - "3002:3002"
@@ -118,6 +123,8 @@ services:
       PORT: 3002
       DATABASE_URL: postgresql://streamify_user:streamify_pass@postgres-video:5432/streamify_video
       AUTH_SERVICE_URL: http://auth-service:3001
+      AUTH_GRPC_URL: auth-service:50051
+      RABBITMQ_URL: amqp://streamify:streamify123@rabbitmq:5672
       NODE_ENV: production
     volumes:
       - video-uploads:/app/uploads/videos
@@ -126,14 +133,16 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - streamify-network
     restart: unless-stopped
 
   streaming-service:
     build:
-      context: ./services/streaming-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/streaming-service/Dockerfile
     container_name: streamify-streaming-service
     ports:
       - "3003:3003"
@@ -160,8 +169,8 @@ services:
 
   billing-service:
     build:
-      context: ./services/billing-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/billing-service/Dockerfile
     container_name: streamify-billing-service
     ports:
       - "3004:3004"
@@ -181,8 +190,8 @@ services:
 
   analytics-service:
     build:
-      context: ./services/analytics-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/analytics-service/Dockerfile
     container_name: streamify-analytics-service
     ports:
       - "3005:3005"
@@ -203,31 +212,60 @@ services:
       - streamify-network
     restart: unless-stopped
 
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: streamify-rabbitmq
+    ports:
+      - "5672:5672"      # AMQP protocol
+      - "15672:15672"    # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: streamify
+      RABBITMQ_DEFAULT_PASS: streamify123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - streamify-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api-gateway:
     build:
-      context: ./services/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/api-gateway/Dockerfile
     container_name: streamify-api-gateway
     ports:
       - "3000:3000"
     environment:
       PORT: 3000
       AUTH_SERVICE_URL: http://auth-service:3001
+      AUTH_GRPC_URL: auth-service:50051
       VIDEO_SERVICE_URL: http://video-service:3002
       STREAMING_SERVICE_URL: http://streaming-service:3003
       BILLING_SERVICE_URL: http://billing-service:3004
       ANALYTICS_SERVICE_URL: http://analytics-service:3005
+      RABBITMQ_URL: amqp://streamify:streamify123@rabbitmq:5672
       NODE_ENV: production
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX_REQUESTS: 100
     volumes:
       - ./public:/app/public:ro
     depends_on:
-      - auth-service
-      - video-service
-      - streaming-service
-      - billing-service
-      - analytics-service
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      video-service:
+        condition: service_started
+      streaming-service:
+        condition: service_started
+      billing-service:
+        condition: service_started
+      analytics-service:
+        condition: service_started
     networks:
       - streamify-network
     restart: unless-stopped
@@ -243,3 +281,4 @@ volumes:
   postgres-billing-data:
   postgres-analytics-data:
   video-uploads:
+  rabbitmq-data:

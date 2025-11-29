@@ -2,14 +2,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy shared directory
+COPY services/shared ./shared
+
 # Copy package files
-COPY package*.json ./
+COPY services/billing-service/package*.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy application code
-COPY . .
+COPY services/billing-service/ .
 
 # Expose port
 EXPOSE 3004

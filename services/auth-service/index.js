@@ -366,18 +366,46 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ==================== SAGA PATTERN: COMPENSATION ENDPOINT ====================
+
+// Delete user (for Saga compensation)
+app.delete('/api/auth/users/:userId', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = parseInt(req.params.userId);
+
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({
+      message: 'User deleted successfully (compensation)',
+      userId
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error(error);
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// Initialize gRPC server
+const { startGrpcServer } = require('./grpc-server');
+
 // Initialize database and start server
 initDB()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Auth Service running on port ${PORT}`);
+      console.log(`✅ Auth Service REST API running on port ${PORT}`);
     });
+
+    // Start gRPC server
+    startGrpcServer();
   })
   .catch(err => {
     console.error('Failed to initialize database:', err);
