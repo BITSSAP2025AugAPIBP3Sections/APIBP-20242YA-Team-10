@@ -60,14 +60,14 @@ declare -a services=(
 # Build each service
 for service in "${services[@]}"; do
     echo -e "${GREEN}Building $service...${NC}"
-    
+
     # Build the image
     docker build -t "streamify-$service:latest" \
                  -t "streamify-$service:$VERSION" \
                  -t "$DOCKER_USERNAME/streamify-$service:latest" \
                  -t "$DOCKER_USERNAME/streamify-$service:$VERSION" \
                  "./services/$service"
-    
+
     echo -e "${GREEN}✓ Built $service${NC}"
     echo ""
 done
@@ -88,17 +88,17 @@ if [ "$PUSH_TO_DOCKERHUB" = true ]; then
     echo -e "${GREEN}Pushing images to DockerHub...${NC}"
     echo -e "${GREEN}=====================================${NC}"
     echo ""
-    
+
     for service in "${services[@]}"; do
         echo -e "${GREEN}Pushing $service...${NC}"
-        
+
         docker push "$DOCKER_USERNAME/streamify-$service:latest"
         docker push "$DOCKER_USERNAME/streamify-$service:$VERSION"
-        
+
         echo -e "${GREEN}✓ Pushed $service${NC}"
         echo ""
     done
-    
+
     echo -e "${GREEN}=====================================${NC}"
     echo -e "${GREEN}All images pushed successfully!${NC}"
     echo -e "${GREEN}=====================================${NC}"
