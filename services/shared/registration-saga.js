@@ -2,12 +2,12 @@ const axios = require('axios');
 
 /**
  * Saga Pattern Implementation for User Registration
- * 
+ *
  * Steps:
  * 1. Create user in Auth Service
  * 2. Create wallet in Billing Service
  * 3. Create analytics profile in Analytics Service
- * 
+ *
  * If any step fails, compensating transactions rollback previous steps
  */
 
